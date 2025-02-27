@@ -1,0 +1,25 @@
+<!-- conversation_detail.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Conversation with: {{ conversation }}</h1>
+
+<div>
+    <h2>Messages:</h2>
+    <ul>
+        {% for message in messages %}
+            <li><strong>{{ message.sender.username }}:</strong> {{ message.content }} <em>({{ message.timestamp }})</em></li>
+        {% empty %}
+            <li>No messages yet.</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <textarea name="content" rows="3" placeholder="Type your message here..."></textarea>
+    <button type="submit">Send</button>
+</form>
+
+<a href="{% url 'conversation_list' %}">Back to Conversations</a>
+{% endblock %}
