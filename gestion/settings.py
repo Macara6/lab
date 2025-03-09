@@ -101,7 +101,7 @@ REST_FRAMEWORK = {
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 #  data base in django
 
-
+'''
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -120,7 +120,7 @@ DATABASES = {
         'PORT': '3306',
     }
 }
-'''
+
 
 
 
