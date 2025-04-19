@@ -65,7 +65,8 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-           "http://localhost:5173",  # Adjust this to match your Vue.js app's URL
+           "http://localhost:5173",
+           "https://bilatech-pos-ure7.vercel.app/", # Adjust this to match your Vue.js app's URL
        ]
 CORS_ALLOW_ALL_ORIGINS = True
 ROOT_URLCONF = 'gestion.urls'
