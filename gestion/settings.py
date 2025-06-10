@@ -16,6 +16,7 @@ import pymysql
 
 pymysql.install_as_MySQLdb()
 from datetime import timedelta
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,7 +30,7 @@ SECRET_KEY = 'django-insecure-cr+nt5y*e83_0+6&xopwjgvc9pi2ul&dys(q74o9uu=syp5q8h
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['api.bilatech.org','13.60.191.30']
 
 
 SIMPLE_JWT = {
@@ -38,6 +39,15 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+#reglage  gamil pour envoiyer le email
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = 'bilatechstore@gmail.com'
+EMAIL_HOST_PASSWORD = 'rooy bjzh tzvn tosv'
+
 
 # Application definition
 
@@ -54,6 +64,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -61,13 +72,24 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    
 ]
 
 CORS_ALLOWED_ORIGINS = [
-           "http://localhost:5173",  # Adjust this to match your Vue.js app's URL
+               "https://bilatech.org",
+               "https://www.bilatech.org",
+               # Adjust this to match your Vue.js app's URL
        ]
 CORS_ALLOW_ALL_ORIGINS = True
+
+
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "https://bilatech.vercel.app/",
+]
+
+
 ROOT_URLCONF = 'gestion.urls'
 
 TEMPLATES = [
@@ -95,12 +117,12 @@ REST_FRAMEWORK = {
         # Other authentication classes can be added here
     ),
     # Other settings...
+ 
 }
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 #  data base in django
-
 
 DATABASES = {
     'default': {
@@ -108,6 +130,13 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+'''
+DATABASES = {
+   'default': dj_database_url.config(default='postgres://localhost')
+}
+'''
+
 '''
 
 DATABASES = {
@@ -148,7 +177,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Paris'
 
 USE_I18N = True
 

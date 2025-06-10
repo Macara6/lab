@@ -11,6 +11,23 @@ urlpatterns = [
     path('category/',CategoryView.as_view(), name='category-list'),
     path('productCreate/',ProductCreateView.as_view(), name='product-create'),
     path('userCreate/', UserCreateView.as_view(), name='user-create'),
+    path('userUpdateView/<int:user__id>/',UpdatUserVieuw.as_view, name='user-update' ),
+    path('usersView/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('refresh-token/', CustomTokenRefreshView.as_view(), name='token_refresh'),
+    path('createSubscription/', CreateSubsriptionView.as_view(), name='subscriptionView'),
+    path('listSubsription/',ListSubscriptionView.as_view(), name='listeSubsription'),
+    path('subscription/update/<int:user__id>/',UpdateSubscriptionView.as_view(), name ='update-subscription'),
+    path('subscription/<int:user__id>/', SubscriptionByUserView.as_view(), name='subscription-by-user'),
+    path('subscription/reactivate/<int:user_id>/', ReactivateSubscriptionView.as_view(), name='reactivate-subscription'),
+    path('invoices/history/', UserSalesHistoryView.as_view(), name='user-sales-history'),
+    path('userProfil/', UserProfilView.as_view(), name='user_profil'),
+    path('userProfil/update/', UserProfilUpdateView.as_view(), name='user_profil_update'),
+
+    path('cashouts/', CashOutView.as_view(), name='cashout-list'),
+    path('cashoutDetail/', CashOutDetailView.as_view(), name='cashout-detail'),
+    path('cashout/create/', CreateCashOutView.as_view(), name='create-cashout'),
+
+   
+
     
 ]
