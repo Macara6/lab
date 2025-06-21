@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-cr+nt5y*e83_0+6&xopwjgvc9pi2ul&dys(q74o9uu=syp5q8h
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["api.bilatech.org","35.171.181.36","localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["api.bilatech.org","35.171.181.36"]
 
 
 SIMPLE_JWT = {
