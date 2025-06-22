@@ -14,6 +14,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.generics import RetrieveDestroyAPIView
 
+
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
@@ -340,4 +341,5 @@ class DeleteCashOut(RetrieveDestroyAPIView):
     queryset = CashOut.objects.all()
     serializer_class = CashOutCreateSerializer
     permission_classes = [IsAuthenticated]
+   
     lookup_field = 'id'
