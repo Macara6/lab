@@ -26,7 +26,7 @@ urlpatterns = [
     path('cashouts/', CashOutView.as_view(), name='cashout-list'),
     path('cashoutDetail/', CashOutDetailView.as_view(), name='cashout-detail'),
     path('cashout/create/', CreateCashOutView.as_view(), name='create-cashout'),
-    path('cashout/delete/<int:id>/', DeleteCashOut.as_view, name='delete-cashout')
+    path('cashout/delete/<int:id>/', DeleteCashOut.as_view(), name='delete-cashout')
 
     
 ]
