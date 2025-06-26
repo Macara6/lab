@@ -97,3 +97,23 @@ class CashOutDetail(models.Model):
     def __str__(self):
        return f"{self.reason} - {self.amount}"   
 
+
+class EntryNote(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now=True)
+    supplier_name = models.CharField(max_length=30)
+
+    def __str__(self):
+         return f"{self.supplier_name} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+    
+    @property
+    def total_amount(self):
+        return sum(detail.amount for detail in self.details.all())
+    
+class EntryNoteDetail(models.Model):
+    entrynote = models.ForeignKey(EntryNote, related_name='details', on_delete=models.CASCADE)
+    reason = models.TextField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+       return f"{self.reason} - {self.amount}"   

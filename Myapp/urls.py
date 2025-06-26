@@ -23,10 +23,18 @@ urlpatterns = [
     path('userProfil/', UserProfilView.as_view(), name='user_profil'),
     path('userProfil/update/', UserProfilUpdateView.as_view(), name='user_profil_update'),
 
+    #route pour la careation, vision et suppression du bon de sortie
     path('cashouts/', CashOutView.as_view(), name='cashout-list'),
     path('cashoutDetail/', CashOutDetailView.as_view(), name='cashout-detail'),
     path('cashout/create/', CreateCashOutView.as_view(), name='create-cashout'),
-    path('cashout/delete/<int:id>/', DeleteCashOut.as_view(), name='delete-cashout')
+    path('cashout/delete/<int:id>/', DeleteCashOut.as_view(), name='delete-cashout'),
+    #fin de routage
 
+    #routage pour la creation du bon d'entré
+    path("entryNote/create/",CreateEntryNoteView .as_view(), name="create-entryNote"),
+    path('entryNote/',EntryNoteViewList.as_view(),name='Entry_note-list'),
+    path('entryNote/detail/', EntryDetailView.as_view(), name= 'entryNote-detail'),
+    path('entryNote/delete/<int:id>/', DeleteEntryNote.as_view(),name='entryNode-delete')
+    #fin de routage pour le entry note
     
 ]
