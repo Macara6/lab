@@ -343,3 +343,43 @@ class DeleteCashOut(RetrieveDestroyAPIView):
     permission_classes = [IsAuthenticated]
    
     lookup_field = 'id'
+
+#fonction pour creer un bon d'entré
+class CreateEntryNoteView(generics.CreateAPIView):
+    queryset = EntryNote.objects.all()
+    serializer_class = EnteryNoteCreateSerializer
+    permission_classes = [IsAuthenticated]  
+
+class EntryNoteViewList(generics.ListAPIView):
+    serializer_class = EntryNoteSerialize
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = EntryNote.objects.all().order_by('-created_at')
+        user_id = self.request.query_params.get('user')
+
+        if user_id:
+            queryset = queryset.filter(user__id=user_id)
+        return queryset
+        
+class EntryDetailView(generics.ListAPIView):
+    serializer_class = EnteryNoteDetailReadSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        entrynote_id = self.request.query_params.get('entrynote')
+        if entrynote_id:
+            return EntryNoteDetail.objects.filter(entrynote__id= entrynote_id)
+        
+        return EntryNoteDetail.objects.none()
+    
+class DeleteEntryNote(RetrieveDestroyAPIView):
+    queryset = EntryNote.objects.all()
+    serializer_class = EnteryNoteCreateSerializer
+    permission_classes = [IsAuthenticated]
+
+    lookup_field ='id'  
+
+   
+
+    

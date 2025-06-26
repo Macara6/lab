@@ -101,6 +101,8 @@ class SubsriptionSerialize(serializers.ModelSerializer):
             'end_date',
             'is_active'
         ]
+
+
  #afficher les details de du bon de sortie        
 class CashOutDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -151,3 +153,44 @@ class CashOutCreateSerializer(serializers.ModelSerializer):
             CashOutDetail.objects.create(cashout=cashout, **detail)
         return cashout
 
+
+#les serializer pour le note d'entrée
+class EntryNoteSerialize(serializers.ModelSerializer):
+
+    class Meta:
+        model = EntryNote
+        fields =['id','user','supplier_name','created_at','total_amount']
+
+class EnteryNoteDetailCreateSerializer(serializers.ModelSerializer):
+
+        class Meta:
+            model = EntryNoteDetail
+            fields = ['reason','amount']
+
+class EnteryNoteDetailReadSerializer(serializers.ModelSerializer):
+        
+        class Meta:
+            model = EntryNoteDetail
+            fields = ['id','reason','amount']
+
+class EnteryNoteCreateSerializer(serializers.ModelSerializer):
+        user_id = serializers.PrimaryKeyRelatedField(
+            queryset = User.objects.all(), write_only=True, source='user'
+        )
+        details = serializers.SerializerMethodField(read_only=True)
+        detail_inputs = EnteryNoteDetailCreateSerializer(many=True, write_only=True, source='details')
+
+        class Meta:
+            model = EntryNote
+            fields = ['user_id','supplier_name','created_at','total_amount','details','detail_inputs']
+
+        def get_details(self, obj):
+                return EnteryNoteDetailReadSerializer(obj.details.all(),many=True).data
+            
+        def create(self, validated_data):
+            details_data = validated_data.pop('details',[])
+            entery_note = EntryNote.objects.create(**validated_data)
+
+            for detail in details_data:
+                EntryNoteDetail.objects.create(entrynote=entery_note,**detail)
+            return entery_note
