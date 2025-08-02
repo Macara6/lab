@@ -13,11 +13,13 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 import pymysql
+import certifi
+import ssl
 
 pymysql.install_as_MySQLdb()
 from datetime import timedelta
-import dj_database_url
 
+ssl_context = ssl.create_default_context(cafile=certifi.where())
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,7 +32,7 @@ SECRET_KEY = 'django-insecure-cr+nt5y*e83_0+6&xopwjgvc9pi2ul&dys(q74o9uu=syp5q8h
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://api.bilatech.org','*']
+ALLOWED_HOSTS = ['*']
 
 
 SIMPLE_JWT = {
@@ -40,13 +42,15 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 #reglage  gamil pour envoiyer le email
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'Myapp.email_backend.UnsafeEmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
 EMAIL_HOST_USER = 'bilatechstore@gmail.com'
 EMAIL_HOST_PASSWORD = 'rooy bjzh tzvn tosv'
+DEFAULT_FROM_EMAIL = 'bilatechstore@gmail.com'
 
 
 # Application definition
@@ -123,7 +127,7 @@ REST_FRAMEWORK = {
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 #  data base in django
-'''
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -146,9 +150,9 @@ DATABASES = {
         'PORT': '3306',
     }
 }
+'''
 
-
-
+AUTH_USER_MODEL = 'Myapp.CustomUser'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from  django.contrib.auth.models import User # type: ignore
+from django.contrib.auth import get_user_model
+User = get_user_model() 
 from .models import *
 
 
@@ -14,15 +15,21 @@ class UserSerializer(serializers.ModelSerializer):
             }
 
     def create(self, validated_data):
-       
+        password = validated_data.pop('password')
         user = User(**validated_data)
-        user.set_password(validated_data['password'])
+        user.set_password(password)
         user.save()
 
      
         return user  
-    
-    
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()   
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=5)
+
 class UserViewSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(source = 'userprofile.phone_number',read_only = True)
     class Meta:
@@ -36,37 +43,88 @@ class CategoryViewSerializer(serializers.ModelSerializer):
         fields = ['id','name','user_created']
 
 
+class CreateCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['name','user_created']
+
+
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
-        fields = ['id','name','price','puchase_price','stock','category','user_created','created_at']
+        fields = ['id','name','price','purchase_price','stock','category','user_created','created_at']
         extra_kwargs = {
             'puchase_price':{'required':True},
             'created_at':{'required':True}
         }
+
 class ProductCreateSerializer(serializers.ModelSerializer):
+    barcode = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     class Meta:
         model = Product
         fields = [
             'name',
             'price',
-            'puchase_price',
+            'purchase_price',
             'stock',
             'category',
             'user_created',
-        ]        
+            'barcode', 
+        ]  
+
+
+class InvoiceItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    class Meta:
+        model = InvoiceItem
+        fields = ['product','product_name','quantity', 'price','purchase_price']             
+
 
 class InvoiceSerializer(serializers.ModelSerializer):
+    items = InvoiceItemSerializer(many=True)
+    profit_amount = serializers.SerializerMethodField()
     class Meta:
         model =  Invoice
         fields = [
             'client_name',
             'total_amount',
             'change',
-            'cashier'
+            'cashier',
+            'items',
+            'profit_amount'
         ]
+    
+    def get_profit_amount(self,obj):
+        print("Calcul profit for invoice:", obj.id)
+        profit =0
+
+        for item in obj.items.all():
+            
+            profit += (item.price - item.purchase_price) * item.quantity
+        return profit
+
+    def create(self,validated_data):
+        
+        items_data = validated_data.pop('items')
+        invoice = Invoice.objects.create(**validated_data)
+
+        for item_data in items_data:
+            product = item_data['product']
+            quantity = item_data['quantity']
+
+            if product.stock < quantity:
+                raise serializers.ValidationError(
+                    f"Stock insuffisant pour le produit '{product.name}' (stock: {product.stock}, demandé: {quantity})"
+                )
+            InvoiceItem.objects.create(invoice=invoice, **item_data)
+            product.stock -= quantity
+            product.save()
+        return invoice
 
 class InvoicesViewSerializer(serializers.ModelSerializer):
+    profit_amount = serializers.SerializerMethodField()
+    items = InvoiceItemSerializer(many=True, read_only=True)  # Optionnel si tu veux afficher les items
+
     class Meta:
         model = Invoice
         fields = [
@@ -75,9 +133,18 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
             'total_amount',
             'change',
             'cashier',
-            'created_at'
+            'created_at',
+            'profit_amount',
+            'items',  # Optionnel, à inclure si nécessaire pour l'interface
         ]
 
+    def get_profit_amount(self, obj):
+        profit = 0
+        for item in obj.items.all():
+            profit += (item.price - item.purchase_price) * item.quantity
+        return profit
+
+#fonction pour le profile
 class UserProfilViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
@@ -88,9 +155,10 @@ class UserProfilViewSerializer(serializers.ModelSerializer):
             'adress',
             'rccm_number',
             'impot_number',
+            'currency_preference'
         ]  
 
-class SubsriptionSerialize(serializers.ModelSerializer):
+class SubscriptionSerialize(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = [
@@ -194,3 +262,52 @@ class EnteryNoteCreateSerializer(serializers.ModelSerializer):
             for detail in details_data:
                 EntryNoteDetail.objects.create(entrynote=entery_note,**detail)
             return entery_note
+
+#fonction pour changer le mot de passe
+class ChangePasswordSerialize(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required= True)
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+
+        if not user.check_password(value):
+            raise serializers.ValidationError("l'ancien mot de passe est incorrect.")
+        return value
+    
+    def validate_new_password(self, value):
+        if len(value) < 6:
+            raise serializers.ValidationError("Le nouveau mot de passe doit contenir au moins 8 caractères.")
+        return value;
+#serializer pour definir le code secret de l'utilisateur 
+
+class SecretAccessKeySerializer(serializers.Serializer):
+    old_key = serializers.CharField(write_only=True, required=False)
+    new_key = serializers.CharField(write_only=True, required = True)
+
+
+    class Meta:
+        model = SecretAccessKey
+        fields = ['old_key', 'new_key']
+
+    def update(self, instance,validated_date):
+        old_key = validated_date.get('old_key')
+        new_key = validated_date.get('new_key')
+
+        if not old_key:
+             raise serializers.ValidationError({"old_key": "Ancien code requis pour la mise à jour"})
+        if not check_password(old_key,instance.hashed_key):
+             raise serializers.ValidationError({"old_key": "Ancien code incorrect"})
+        instance.hashed_key =make_password(new_key)
+        instance.save()
+        return instance
+
+    def create(self, validated_data):
+        new_key = validated_data.get('new_key')
+        user = self.context['request'].user
+       
+        return SecretAccessKey.objects.create(
+            user = user,
+            hashed_key = make_password(new_key)
+        )
+    
