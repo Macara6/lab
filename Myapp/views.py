@@ -14,7 +14,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.generics import RetrieveDestroyAPIView
-
+from django.template import loader
+from django.http import HttpResponse
 
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -29,6 +30,10 @@ User = get_user_model()
 
 from .models import *
 
+
+def index(request):
+    template = loader.get_template("base.html")
+    return HttpResponse(template.render({}, request))
 
 class CustomTokenRefreshView(TokenRefreshView):
     permission_classes = [IsAuthenticated]
@@ -196,6 +201,12 @@ class UpdatUserVieuw(generics.UpdateAPIView):
     def perform_update(self, serializer):
      serializer.save()# ou self.kwargs['pk']
 
+ #fonction pour supprimer l'utilisateur     
+class DeleteUserView(RetrieveDestroyAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field ='id'
 
 #fonction pour changer le mot de passe 
 class ChangePasswordView(generics.UpdateAPIView):
@@ -352,6 +363,8 @@ class DeleleInvoice(RetrieveDestroyAPIView):
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
     lookup_field = 'id'
+
+
 
 class InvoiceView(generics.ListAPIView):        
     serializer_class = InvoicesViewSerializer   

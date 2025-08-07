@@ -1,7 +1,9 @@
 from django.urls import path
 from.views import *
+from . import views
 
 urlpatterns = [
+    path('',views.index, name='index'),
     path('login/',LoginView.as_view(), name='login'),
     path('products/', ProductListView.as_view(), name='products'),
     path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
@@ -23,9 +25,9 @@ urlpatterns = [
     path('userCreate/', UserCreateView.as_view(), name='user-create'),
     
      path('users/created-by-me/', UsersCreatedByMeView.as_view(), name='users-created-by-me'),
-
     path('userUpdateView/<int:user__id>/',UpdatUserVieuw.as_view, name='user-update' ),
     path('usersView/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
+    path('user/delete/<int:id>/',DeleteUserView.as_view(), name='delete-user'),
     #route pour le mot de passe 
     path('password-reset-request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     

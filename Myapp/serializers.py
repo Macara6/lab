@@ -88,6 +88,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         fields = [
             'client_name',
             'total_amount',
+            'amount_paid',
             'change',
             'cashier',
             'items',
@@ -131,6 +132,7 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
             'id',
             'client_name',
             'total_amount',
+            'amount_paid',
             'change',
             'cashier',
             'created_at',
