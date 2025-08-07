@@ -91,9 +91,11 @@ class Product(models.Model):
 class Invoice(models.Model):
     client_name = models.CharField(max_length=100)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     change = models.DecimalField(max_digits=10, decimal_places=2)
     cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now=True)
+
 
     def __str__(self):
         created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
