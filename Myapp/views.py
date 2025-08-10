@@ -115,7 +115,6 @@ class UserCreateView(generics.CreateAPIView):
                      return Response({'detail': "Votre abonnement a expiré."}, status=status.HTTP_403_FORBIDDEN)
             except Subscription.DoesNotExist:
                 return Response({'detail': 'Aucun abonnement trouvé.'}, status=status.HTTP_403_FORBIDDEN)
-
         #pour le sur utilisateur 
         if current_user.is_superuser:
             serializer = self.get_serializer(data=request.data)
@@ -130,9 +129,7 @@ class UserCreateView(generics.CreateAPIView):
                     'message':'User created successfully'
                 }, status = status.HTTP_201_CREATED )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-
-        
+                
         try:
             subscription =Subscription.objects.get(user = current_user)
         except Subscription.DoesNotExist:
@@ -226,8 +223,15 @@ class ChangePasswordView(generics.UpdateAPIView):
             user.save()
             return Response({'detail': 'Mot de passe modifié avec succès'}, status=status.HTTP_200_OK)
          return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+     
+#fonction pour modifier l'utilisateur     
+class UpdateUserApiView(generics.UpdateAPIView):
+    serializer_class = UserUpdateSerializer
+    permission_classes = [IsAuthenticated]
 
-
+    def get_object(self):
+        # Retourne l'utilisateur connecté
+        return self.request.user
 #fonction pour definir le mot de passe secret de l'utilisateur 
 class SecretAccessKeyCreateUpdateView(generics.CreateAPIView, generics.UpdateAPIView):
     serializer_class = SecretAccessKeySerializer
@@ -354,8 +358,6 @@ class CreateInvoiceView(generics.CreateAPIView):
     queryset = Invoice.objects.all()
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
-
-
 
 
 class DeleleInvoice(RetrieveDestroyAPIView):
@@ -517,7 +519,6 @@ class ReactivateSubscriptionView(APIView):
 
 class PasswordResetRequestView(APIView):
     permission_classes = []
-    
     def post(self, request):
         serializers = PasswordResetRequestSerializer(data=request.data)
         serializers.is_valid(raise_exception=True)
@@ -553,7 +554,6 @@ class PasswordResetRequestView(APIView):
     
 class PasswordResetConfirmView(APIView):
     permission_classes = []
-    
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

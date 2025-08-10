@@ -21,13 +21,14 @@ urlpatterns = [
     path('category/by-user/<int:user_id>/', CategoryByUserView.as_view(), name='categorie-by-user'),
     #fin  
     path('productCreate/',ProductCreateView.as_view(), name='product-create'),
-
+    #route pour l'utilisateur
     path('userCreate/', UserCreateView.as_view(), name='user-create'),
-    
-     path('users/created-by-me/', UsersCreatedByMeView.as_view(), name='users-created-by-me'),
+    path('users/created-by-me/', UsersCreatedByMeView.as_view(), name='users-created-by-me'),
     path('userUpdateView/<int:user__id>/',UpdatUserVieuw.as_view, name='user-update' ),
     path('usersView/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('user/delete/<int:id>/',DeleteUserView.as_view(), name='delete-user'),
+    path('user/update/', UpdateUserApiView.as_view(), name='update-user'),
+
     #route pour le mot de passe 
     path('password-reset-request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     
