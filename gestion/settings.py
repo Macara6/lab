@@ -142,7 +142,7 @@ DATABASES = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'gestion',
+        'NAME': 'gestionposdb',
         'USER': 'root',
         'PASSWORD':'BilaTech@25',
         'HOST': 'localhost',
