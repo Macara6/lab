@@ -8,20 +8,33 @@ class UserSerializer(serializers.ModelSerializer):
    
     class Meta:
         model = User
-        fields = ['id','username','email','password','date_joined']
+        fields = ['id','username','first_name','last_name','email','password','date_joined']
         extra_kwargs = {
             'password':{'write_only':True},
             'date_joined': {'read_only': True}
             }
-
+       
     def create(self, validated_data):
         password = validated_data.pop('password')
         user = User(**validated_data)
         user.set_password(password)
         user.save()
-
-     
         return user  
+    
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
+    
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id','username','first_name','last_name','email','date_joined']
+        read_only_fields = ['id','username']
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()   
@@ -148,6 +161,7 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
 
 #fonction pour le profile
 class UserProfilViewSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = UserProfile
         fields = [
@@ -286,7 +300,6 @@ class ChangePasswordSerialize(serializers.Serializer):
 class SecretAccessKeySerializer(serializers.Serializer):
     old_key = serializers.CharField(write_only=True, required=False)
     new_key = serializers.CharField(write_only=True, required = True)
-
 
     class Meta:
         model = SecretAccessKey
