@@ -96,6 +96,8 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
 class InvoiceSerializer(serializers.ModelSerializer):
     items = InvoiceItemSerializer(many=True)
     profit_amount = serializers.SerializerMethodField()
+    cashier_name = serializers.CharField(source='user.username', read_only=True)
+    cashier_currency = serializers.SerializerMethodField()
     class Meta:
         model =  Invoice
         fields = [
@@ -104,18 +106,24 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'amount_paid',
             'change',
             'cashier',
+            'cashier_name',
+            'cashier_currency', 
             'items',
             'profit_amount'
         ]
     
     def get_profit_amount(self,obj):
-        print("Calcul profit for invoice:", obj.id)
         profit =0
-
         for item in obj.items.all():
             
             profit += (item.price - item.purchase_price) * item.quantity
         return profit
+    
+    def get_cashier_currency(self, obje):
+        try:
+            return obje.cashier.userprofil.currency_preference
+        except:
+            return None
 
     def create(self,validated_data):
         
@@ -137,8 +145,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 class InvoicesViewSerializer(serializers.ModelSerializer):
     profit_amount = serializers.SerializerMethodField()
-    items = InvoiceItemSerializer(many=True, read_only=True)  # Optionnel si tu veux afficher les items
-
+    items = InvoiceItemSerializer(many=True, read_only=True)
+    cashier_currency = serializers.SerializerMethodField() # Optionnel si tu veux afficher les items
     class Meta:
         model = Invoice
         fields = [
@@ -148,17 +156,24 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
             'amount_paid',
             'change',
             'cashier',
+            'cashier_currency', 
             'created_at',
             'profit_amount',
             'items',  # Optionnel, à inclure si nécessaire pour l'interface
         ]
-
     def get_profit_amount(self, obj):
         profit = 0
         for item in obj.items.all():
             profit += (item.price - item.purchase_price) * item.quantity
         return profit
-
+    
+    def get_cashier_currency(self, obj):
+     try:
+        return obj.cashier.userprofile.currency_preference
+     except AttributeError:
+        return None
+     except UserProfile.DoesNotExist:
+        return None
 #fonction pour le profile
 class UserProfilViewSerializer(serializers.ModelSerializer):
 
@@ -198,6 +213,8 @@ class CashOutSerializer(serializers.ModelSerializer):
     class Meta:
         model = CashOut
         fields =['id','user','created_at','motif','total_amount']
+
+    
 
 class CashOutDatailCreateSerializer(serializers.ModelSerializer):
     class Meta:
