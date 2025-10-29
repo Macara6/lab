@@ -41,7 +41,6 @@ urlpatterns = [
     path('refresh-token/', CustomTokenRefreshView.as_view(), name='token_refresh'),
     path('secret_key/verify/', VerifySecretKeyView.as_view(), name='verify-secret-key'),
 
-    
 
     #route pour la subscription 
     path('listSubsription/',ListSubscriptionView.as_view(), name='listeSubsription'),
@@ -67,7 +66,8 @@ urlpatterns = [
     path("entryNote/create/",CreateEntryNoteView .as_view(), name="create-entryNote"),
     path('entryNote/',EntryNoteViewList.as_view(),name='Entry_note-list'),
     path('entryNote/detail/', EntryDetailView.as_view(), name= 'entryNote-detail'),
-    path('entryNote/delete/<int:id>/', DeleteEntryNote.as_view(),name='entryNode-delete')
+    path('entryNote/delete/<int:id>/', DeleteEntryNote.as_view(),name='entryNode-delete'),
     #fin de routage pour le entry note
+    
     
 ]
