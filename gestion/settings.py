@@ -19,6 +19,9 @@ pymysql.install_as_MySQLdb()
 from datetime import timedelta
 
 
+
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -41,8 +44,8 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 #reglage  gamil pour envoiyer le email
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-#EMAIL_BACKEND = 'Myapp.email_backend.UnsafeEmailBackend'
+#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'Myapp.email_backend.UnsafeEmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
@@ -64,9 +67,11 @@ INSTALLED_APPS = [
     'Myapp',
     'rest_framework',
     'corsheaders',
+    'silk',
 ]
 
 MIDDLEWARE = [
+    'silk.middleware.SilkyMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -123,9 +128,32 @@ REST_FRAMEWORK = {
  
 }
 
+
+
+# Détecte si on est en production
+IS_PRODUCTION = os.getenv("DJANGO_PRODUCTION", "False").lower() in ["true", "1"]
+
+if IS_PRODUCTION:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn="https://525dfd656fe1f8a7009c076d13e1216a@o4510272353861632.ingest.us.sentry.io/4510272355303425",
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=0.5,        # surveille 50% des requêtes
+        profiles_sample_rate=0.5,      # active le profilage
+        send_default_pii=True,         # inclut les infos utilisateur (sûr si HTTPS)
+        debug=False                     # ne pas afficher les logs Sentry en console
+    )
+else:
+    # En développement, Sentry est désactivé
+    print("Sentry désactivé en mode développement")
+
+
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 #  data base in django
+
 '''
 DATABASES = {
     'default': {

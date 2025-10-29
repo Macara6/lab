@@ -31,6 +31,8 @@ User = get_user_model()
 from .models import *
 
 
+
+
 def index(request):
     template = loader.get_template("base.html")
     return HttpResponse(template.render({}, request))
@@ -236,7 +238,6 @@ class UpdateUserApiView(generics.UpdateAPIView):
 class SecretAccessKeyCreateUpdateView(generics.CreateAPIView, generics.UpdateAPIView):
     serializer_class = SecretAccessKeySerializer
     permission_classes = [IsAuthenticated]
-
     def get_object(self):
         return SecretAccessKey.objects.filter(user= self.request.user).first()
     
@@ -255,7 +256,6 @@ class SecretAccessKeyCreateUpdateView(generics.CreateAPIView, generics.UpdateAPI
 
 class SecretKeyStatusView(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         has_key = SecretAccessKey.objects.filter(user=request.user).exists()
         return Response({'has_key': has_key}) 
@@ -375,7 +375,6 @@ class InvoiceView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         User = get_user_model()
-
         # Récupérer l'utilisateur et ses enfants
         child_users = User.objects.filter(created_by=user).values_list('id', flat=True)
         only_children = self.request.query_params.get('only_children') == 'true'
@@ -650,7 +649,6 @@ class DeleteEntryNote(RetrieveDestroyAPIView):
     queryset = EntryNote.objects.all()
     serializer_class = EnteryNoteCreateSerializer
     permission_classes = [IsAuthenticated]
-
     lookup_field ='id'  
 
    

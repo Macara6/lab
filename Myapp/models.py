@@ -154,7 +154,6 @@ class CashOut(models.Model):
     def total_amount(self):
         return sum(detail.amount for detail in self.details.all())
 
-
 class CashOutDetail(models.Model):
     cashout = models.ForeignKey(CashOut, related_name='details', on_delete=models.CASCADE)
     reason = models.TextField()
@@ -162,7 +161,6 @@ class CashOutDetail(models.Model):
 
     def __str__(self):
         return f"{self.reason} - {self.amount}"
-
 
 class EntryNote(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
