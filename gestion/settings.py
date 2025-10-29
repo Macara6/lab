@@ -138,7 +138,7 @@ if IS_PRODUCTION:
     from sentry_sdk.integrations.django import DjangoIntegration
 
     sentry_sdk.init(
-        dsn="https://525dfd656fe1f8a7009c076d13e1216a@o4510272353861632.ingest.us.sentry.io/4510272355303425",
+        dsn="https://69c75d7cf34cd28b062600e1a029dcf3@o4510272353861632.ingest.us.sentry.io/4510273117421568",
         integrations=[DjangoIntegration()],
         traces_sample_rate=0.5,        # surveille 50% des requêtes
         profiles_sample_rate=0.5,      # active le profilage
