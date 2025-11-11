@@ -71,6 +71,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'puchase_price':{'required':True},
             'created_at':{'required':True}
         }
+        
 #serializer pour creer le produit 
 class ProductCreateSerializer(serializers.ModelSerializer):
     barcode = serializers.CharField(required=False, allow_blank=True, allow_null=True)
