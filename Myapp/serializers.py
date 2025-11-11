@@ -61,16 +61,17 @@ class CreateCategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['name','user_created']
 
-
+#serializer pour afficher le produits 
 class ProductSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
     class Meta:
         model = Product
-        fields = ['id','name','price','purchase_price','stock','category','user_created','created_at']
+        fields = ['id','name','price','purchase_price','stock','category','category_name','user_created','created_at','barcode','expiration_date']
         extra_kwargs = {
             'puchase_price':{'required':True},
             'created_at':{'required':True}
         }
-
+#serializer pour creer le produit 
 class ProductCreateSerializer(serializers.ModelSerializer):
     barcode = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     class Meta:
@@ -82,9 +83,58 @@ class ProductCreateSerializer(serializers.ModelSerializer):
             'stock',
             'category',
             'user_created',
-            'barcode', 
+            'barcode',
+            'expiration_date'
         ]  
+#serializer pour creer un nouveau produit du depôt
+class DepotProductCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DepotProduct
+        fields = [
+            'name',
+            'stock',
+            'category',
+            'barcode',
+            'expiration_date',
+            'user_created',
+            'created_at'
+        ]
 
+class ExitDepotItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExitDepotItem
+        fields =[
+            'exit_depot',
+            'depot_product',
+            'quantity',
+        ]
+
+class ExitDepotSerializer(serializers.ModelSerializer):
+    items = ExitDepotItemSerializer(many=True)
+    class Meta:
+        model = ExitDepot
+        fields =[
+            'client_name',
+            'total_item',
+            'user_created',
+            'created_at',
+        ]
+    def create(self, validated_data):
+        items_data =validated_data.pop('items')
+        exit_depot = ExitDepot.objects.create(**validated_data)
+
+        for item_data in items_data:
+            product =item_data['epot_product']
+            quantity =item_data['quantity']
+            if product.stock < quantity:
+                raise serializers.ValidationError(
+                    f"Stock insuffisant pour le produit '{product.name}' (stock: {product.stock}, demandé: {quantity})"
+                )
+            ExitDepotItem.objects.create(exit_depot=exit_depot,**item_data)
+            product.stock -= quantity
+            product.save()
+
+        return exit_depot
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
@@ -142,11 +192,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
             product.stock -= quantity
             product.save()
         return invoice
-
+    
 class InvoicesViewSerializer(serializers.ModelSerializer):
-    profit_amount = serializers.SerializerMethodField()
+    # ⚡ Utilise le champ annoté directement
+    profit_amount = serializers.FloatField(read_only=True)
     items = InvoiceItemSerializer(many=True, read_only=True)
-    cashier_currency = serializers.SerializerMethodField() # Optionnel si tu veux afficher les items
+    cashier_currency = serializers.SerializerMethodField()
+    cashier_name = serializers.CharField(source='cashier.username', read_only=True)
+
     class Meta:
         model = Invoice
         fields = [
@@ -156,24 +209,17 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
             'amount_paid',
             'change',
             'cashier',
-            'cashier_currency', 
+            'cashier_name',
+            'cashier_currency',
             'created_at',
             'profit_amount',
-            'items',  # Optionnel, à inclure si nécessaire pour l'interface
+            'items',
         ]
-    def get_profit_amount(self, obj):
-        profit = 0
-        for item in obj.items.all():
-            profit += (item.price - item.purchase_price) * item.quantity
-        return profit
-    
+
     def get_cashier_currency(self, obj):
-     try:
-        return obj.cashier.userprofile.currency_preference
-     except AttributeError:
-        return None
-     except UserProfile.DoesNotExist:
-        return None
+        # ⚡ Optimisé avec select_related
+        userprofile = getattr(obj.cashier, 'userprofile', None)
+        return userprofile.currency_preference if userprofile else None
 #fonction pour le profile
 class UserProfilViewSerializer(serializers.ModelSerializer):
 

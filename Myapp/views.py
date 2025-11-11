@@ -16,6 +16,7 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework.generics import RetrieveDestroyAPIView
 from django.template import loader
 from django.http import HttpResponse
+from django.db.models import F, Sum, ExpressionWrapper, FloatField
 
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -31,7 +32,9 @@ User = get_user_model()
 from .models import *
 
 
-
+def test_sentry(request):
+    division = 1 / 0  # provoque une erreur
+    return HttpResponse("OK")
 
 def index(request):
     template = loader.get_template("base.html")
@@ -298,11 +301,19 @@ class CategoryByUserView(generics.ListAPIView):
         user_id = self.kwargs.get('user_id')
         return Category.objects.filter(user_created__id=user_id)
 
-
+#api pour creer le produit
 class ProductCreateView(generics.CreateAPIView):
     queryset = Product.objects.all()
     serializer_class =  ProductCreateSerializer
     permission_classes = [IsAuthenticated]
+
+#api pour creer un produit du depôt 
+class DepotProductCreate(generics.CreateAPIView):
+    queryset = DepotProduct.objects.all()
+    serializer_class = DepotProductCreateSerializer
+    permission_classes = [IsAuthenticated]  
+
+
     
 #APi pour user profil 
 class UserProfilView(generics.ListAPIView):
@@ -329,7 +340,6 @@ class UserProfilUpdateView(generics.UpdateAPIView):
 
 class ProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
-
     def get_queryset(self):
        queryset = Product.objects.all()
        user_id =  self.request.query_params.get('user_created', None)
@@ -378,23 +388,29 @@ class InvoiceView(generics.ListAPIView):
         # Récupérer l'utilisateur et ses enfants
         child_users = User.objects.filter(created_by=user).values_list('id', flat=True)
         only_children = self.request.query_params.get('only_children') == 'true'
-        
-        if only_children:
-            # Si only_children=true, on filtre uniquement les enfants
-            all_user_ids = list(child_users)
-        else:
-            all_user_ids = list(child_users) + [user.id]
+        all_user_ids = list(child_users) if only_children else list(child_users) + [user.id]
 
-        queryset = Invoice.objects.filter(cashier__in=all_user_ids)
+        queryset = Invoice.objects.filter(cashier__in=all_user_ids).select_related(
+            'cashier', 'cashier__userprofile'
+        ).prefetch_related('items');
 
-        # Filtrer par paramètre de caisse (optionnel)
+        queryset = queryset.annotate(
+            profit_amount = Sum(
+              ExpressionWrapper(
+                (F('items__price') - F('items__purchase_price')) * F('items__quantity'),
+                output_field=FloatField()
+              )
+            )
+        )
+
         cashier_id = self.request.query_params.get('cashier')
-        if cashier_id is not None:
+
+        if cashier_id:
             queryset = queryset.filter(cashier=cashier_id)
 
-        # Filtrer par date
         date_str = self.request.query_params.get('created_at')
-        if date_str is not None:
+ 
+        if date_str:
             try:
                 date = timezone.make_aware(datetime.strptime(date_str, '%Y-%m-%d'))
                 start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -402,7 +418,6 @@ class InvoiceView(generics.ListAPIView):
                 queryset = queryset.filter(created_at__range=(start_of_day, end_of_day))
             except ValueError:
                 print('Invalid date format provided', date_str)
-
         return queryset
 
 class InvoiceDetailView(generics.ListAPIView):
@@ -528,7 +543,7 @@ class PasswordResetRequestView(APIView):
         if not user:
             return Response({"detail": "Un email de réinitialisation a été envoyé si ce compte existe."}, status=status.HTTP_200_OK)
         
-        code = str(random.randint(1000,9999))
+        code = str(random.randint(100000,999999))
 
         PasswordResetToken.objects.filter(user=user).delete()
 

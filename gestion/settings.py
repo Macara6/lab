@@ -44,8 +44,8 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 #reglage  gamil pour envoiyer le email
-#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_BACKEND = 'Myapp.email_backend.UnsafeEmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+#EMAIL_BACKEND = 'Myapp.email_backend.UnsafeEmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
@@ -131,13 +131,11 @@ REST_FRAMEWORK = {
 
 
 # Détecte si on est en production
-IS_PRODUCTION = os.getenv("DJANGO_PRODUCTION", "False").lower() in ["true", "1"]
 
-if IS_PRODUCTION:
-    import sentry_sdk
-    from sentry_sdk.integrations.django import DjangoIntegration
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 
-    sentry_sdk.init(
+sentry_sdk.init(
         dsn="https://69c75d7cf34cd28b062600e1a029dcf3@o4510272353861632.ingest.us.sentry.io/4510273117421568",
         integrations=[DjangoIntegration()],
         traces_sample_rate=0.5,        # surveille 50% des requêtes
@@ -145,9 +143,7 @@ if IS_PRODUCTION:
         send_default_pii=True,         # inclut les infos utilisateur (sûr si HTTPS)
         debug=False                     # ne pas afficher les logs Sentry en console
     )
-else:
-    # En développement, Sentry est désactivé
-    print("Sentry désactivé en mode développement")
+
 
 
 # Database
@@ -177,6 +173,7 @@ DATABASES = {
         'PORT': '3306',
     }
 }
+
 
 
 AUTH_USER_MODEL = 'Myapp.CustomUser'

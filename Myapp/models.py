@@ -82,11 +82,48 @@ class Product(models.Model):
     user_created = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     barcode = models.CharField(max_length=100, blank=True, null=True) 
+    expiration_date = models.DateField(blank=True, null=True)
 
     def __str__(self):
         created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
         return f"{self.name} - {created_at}"
 
+
+class DepotProduct(models.Model):
+    name = models.CharField(max_length=50)
+    stock = models.PositiveBigIntegerField(default=0)
+    category = models.ForeignKey(Category,on_delete=models.CASCADE)
+    barcode = models.CharField(max_length=100,blank=True, null=True)
+    expiration_date = models.DateField(blank=True, null=True)
+    user_created = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
+        return f"{self.name} - {created_at}"    
+
+  
+    
+class ExitDepot(models.Model):
+    client_name = models.CharField(max_length=100)
+    total_item = models.DecimalField(max_digits=10,decimal_places=0)
+    user_created = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
+        return f"sortie depot {self.client_name} - {created_at}"
+
+
+class ExitDepotItem(models.Model):
+    exit_depot = models.ForeignKey(ExitDepot,related_name='items', on_delete=models.CASCADE)
+    depot_product =models.ForeignKey(DepotProduct, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+
+    def __str__(self):
+
+        return f"{self.depot_product.name} x {self.quantity}"
+    
 
 class Invoice(models.Model):
     client_name = models.CharField(max_length=100)
@@ -95,7 +132,6 @@ class Invoice(models.Model):
     change = models.DecimalField(max_digits=10, decimal_places=2)
     cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now=True)
-
 
     def __str__(self):
         created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
@@ -111,6 +147,9 @@ class InvoiceItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} x{self.quantity}"
+    
+
+
 
 
 class Subscription(models.Model):

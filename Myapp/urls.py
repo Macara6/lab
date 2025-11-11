@@ -5,8 +5,14 @@ from . import views
 urlpatterns = [
     path('',views.index, name='index'),
     path('login/',LoginView.as_view(), name='login'),
+    #route pour le produit pour le stock
     path('products/', ProductListView.as_view(), name='products'),
     path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
+
+    #route pour le creer le produit pour le depôt 
+    path("depotProdut/", DepotProductCreate.as_view(), name="depot_product"),
+
+
     path('invoices/', CreateInvoiceView.as_view(), name='create-invoice'),
     path('invoicesView/', InvoiceView.as_view(), name='invoices-views' ),
     path('invoices/delete/<int:id>/', DeleleInvoice.as_view(), name='delete-invoice'),
@@ -31,7 +37,6 @@ urlpatterns = [
 
     #route pour le mot de passe 
     path('password-reset-request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
-    
     path('password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('change-password/', ChangePasswordView.as_view(), name='change_password'),
     #route pour le code secret 
@@ -68,6 +73,6 @@ urlpatterns = [
     path('entryNote/detail/', EntryDetailView.as_view(), name= 'entryNote-detail'),
     path('entryNote/delete/<int:id>/', DeleteEntryNote.as_view(),name='entryNode-delete'),
     #fin de routage pour le entry note
-    
+    path('test-sentry/', test_sentry),
     
 ]
