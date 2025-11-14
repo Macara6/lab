@@ -1,3 +1,6 @@
+
+
+from decimal import Decimal
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 User = get_user_model() 
@@ -149,6 +152,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     profit_amount = serializers.SerializerMethodField()
     cashier_name = serializers.CharField(source='user.username', read_only=True)
     cashier_currency = serializers.SerializerMethodField()
+    tva = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True) 
     class Meta:
         model =  Invoice
         fields = [
@@ -156,6 +160,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'total_amount',
             'amount_paid',
             'change',
+            'tva',
             'cashier',
             'cashier_name',
             'cashier_currency', 
@@ -179,6 +184,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def create(self,validated_data):
         
         items_data = validated_data.pop('items')
+
+        total = Decimal("0")
+        for item in items_data:
+            total  += item["price"] * item["quantity"]
+        
+        tva = total * Decimal("0.16")
+        validated_data["tva"] = tva
         invoice = Invoice.objects.create(**validated_data)
 
         for item_data in items_data:
@@ -209,6 +221,7 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
             'total_amount',
             'amount_paid',
             'change',
+            'tva',
             'cashier',
             'cashier_name',
             'cashier_currency',

@@ -131,6 +131,7 @@ class Invoice(models.Model):
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     change = models.DecimalField(max_digits=10, decimal_places=2)
     cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    tva = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  
     created_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
