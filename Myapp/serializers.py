@@ -227,6 +227,7 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
             'cashier_currency',
             'created_at',
             'profit_amount',
+            'status',
             'items',
         ]
 

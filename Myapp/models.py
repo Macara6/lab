@@ -126,6 +126,14 @@ class ExitDepotItem(models.Model):
     
 
 class Invoice(models.Model):
+    valid ='VALIDE'
+    canceled = 'ANNULER'
+
+    STATUS_CHOICES = (
+        (valid,'Valide'),
+        (canceled, 'Annuler'),
+    )
+
     client_name = models.CharField(max_length=100)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -133,10 +141,25 @@ class Invoice(models.Model):
     cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     tva = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  
     created_at = models.DateTimeField(auto_now=True)
+    status  = models.CharField(max_length=10, choices=STATUS_CHOICES, default=valid)
 
     def __str__(self):
         created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
         return f"Invoice {self.id} - {self.client_name} - {created_at}"
+    
+    def cancel(self):
+
+        if self.status == 'ANNULER':
+            return False
+        
+        for item in self.items.all():
+            product = item.product
+            product.stock += item.quantity
+            product.save()
+        
+        self.status = 'ANNULER'
+        self.save()
+
 
 
 class InvoiceItem(models.Model):
@@ -149,7 +172,6 @@ class InvoiceItem(models.Model):
     def __str__(self):
         return f"{self.product.name} x{self.quantity}"
     
-
 
 
 

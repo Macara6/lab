@@ -18,6 +18,7 @@ urlpatterns = [
     path('invoices/delete/<int:id>/', DeleleInvoice.as_view(), name='delete-invoice'),
     path('invoices/history/', UserSalesHistoryView.as_view(), name='user-sales-history'),
     path('invoice/detail/', InvoiceDetailView.as_view(), name='invoice_detail'),
+    path('invoice/cancel/<int:invoice_id>/', CancelInvoiceView.as_view(), name='cancel_invoice'),
     path('usersView/', UserView.as_view(), name='user-list'),
    
     #route pour la categorie

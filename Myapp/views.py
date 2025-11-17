@@ -430,6 +430,23 @@ class InvoiceDetailView(generics.ListAPIView):
             return InvoiceItem.objects.filter(invoice__id = invoice_id)
         return InvoiceItem.objects.none()
 
+class CancelInvoiceView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, invoice_id):
+        invoice = get_object_or_404(Invoice, id = invoice_id)
+
+        if invoice.status == 'ANNULER':
+            return Response(
+                {"error": "Cette facture est déjà annulée."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        invoice.cancel()
+
+        return Response(
+            {"message": "Facture annulée et stock restauré."},
+            status=status.HTTP_200_OK
+        )
 #API  pour l'historique de vente pour l'application  flutter 
 class UserSalesHistoryView(generics.ListAPIView):
     serializer_class = InvoicesViewSerializer
