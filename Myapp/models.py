@@ -83,11 +83,36 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     barcode = models.CharField(max_length=100, blank=True, null=True) 
     expiration_date = models.DateField(blank=True, null=True)
+    tva = models.BooleanField(default=True) 
 
     def __str__(self):
         created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
         return f"{self.name} - {created_at}"
+    
+    def add_stock(self, quantity, user):
+        previous = self.stock
+        self.stock += quantity
+        self.save()
 
+        StockHistory.objects.create(
+            product = self,
+            quantity_added = quantity,
+            previous_stock = previous,
+            new_stock = self.stock,
+            added_by = user
+        )
+    
+# model pour l'historique du stock
+class StockHistory(models.Model):
+    product = models.ForeignKey(Product, related_name='stock_history', on_delete=models.CASCADE)
+    quantity_added = models.PositiveBigIntegerField()
+    previous_stock = models.PositiveBigIntegerField()
+    new_stock = models.PositiveBigIntegerField()
+    added_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.product.name} | + {self.quantity_added} | {self.created_at.strftime('%Y-%m-%d %H:%M')}"
 
 class DepotProduct(models.Model):
     name = models.CharField(max_length=50)
@@ -141,7 +166,7 @@ class Invoice(models.Model):
     cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     tva = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  
     created_at = models.DateTimeField(auto_now=True)
-    status  = models.CharField(max_length=10, choices=STATUS_CHOICES, default=valid)
+    status  = models.CharField(max_length=10, choices=STATUS_CHOICES, default='VALIDE')
 
     def __str__(self):
         created_at = self.created_at.strftime('%Y-%m-%d %H:%M')

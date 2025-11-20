@@ -69,7 +69,7 @@ class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     class Meta:
         model = Product
-        fields = ['id','name','price','purchase_price','stock','category','category_name','user_created','created_at','barcode','expiration_date']
+        fields = ['id','name','price','purchase_price','stock','category','category_name','user_created','created_at','barcode','expiration_date','tva']
         extra_kwargs = {
             'puchase_price':{'required':True},
             'created_at':{'required':True}
@@ -88,8 +88,26 @@ class ProductCreateSerializer(serializers.ModelSerializer):
             'category',
             'user_created',
             'barcode',
-            'expiration_date'
-        ]  
+            'expiration_date',
+            'tva',
+        ] 
+#serializer pour afficher l'historique du stok
+class StockHistorySerialize(serializers.ModelSerializer):
+    
+     product_name = serializers.CharField(source="product.name", read_only=True)
+     added_by_name = serializers.CharField(source="added_by.username", read_only=True)
+     class Meta:
+        model = StockHistory
+        fields =[
+            'id',
+            'product_name',
+            'quantity_added',
+            'previous_stock',
+            'new_stock',
+            'added_by',
+            'added_by_name',
+            'created_at'
+        ]
 #serializer pour creer un nouveau produit du depôt
 class DepotProductCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -123,6 +141,7 @@ class ExitDepotSerializer(serializers.ModelSerializer):
             'user_created',
             'created_at',
         ]
+
     def create(self, validated_data):
         items_data =validated_data.pop('items')
         exit_depot = ExitDepot.objects.create(**validated_data)
@@ -185,11 +204,16 @@ class InvoiceSerializer(serializers.ModelSerializer):
         
         items_data = validated_data.pop('items')
 
+        tva = Decimal("0")
+
         total = Decimal("0")
         for item in items_data:
+            product = item["product"]
             total  += item["price"] * item["quantity"]
         
-        tva = total * Decimal("0.16")
+        if any(item['product'].tva for item in items_data):
+            tva = total * Decimal("0.16")
+
         validated_data["tva"] = tva
         invoice = Invoice.objects.create(**validated_data)
 
@@ -274,8 +298,7 @@ class CashOutSerializer(serializers.ModelSerializer):
     class Meta:
         model = CashOut
         fields =['id','user','created_at','motif','total_amount']
-
-    
+ 
 
 class CashOutDatailCreateSerializer(serializers.ModelSerializer):
     class Meta:

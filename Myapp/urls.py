@@ -8,6 +8,8 @@ urlpatterns = [
     #route pour le produit pour le stock
     path('products/', ProductListView.as_view(), name='products'),
     path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
+    path('products/addStock/<int:pk>/', AddStockView.as_view(), name='ajout_stock'),
+    path('stockHistoryViews/', StockHistoryView.as_view(), name="views_history_stock" ),
 
     #route pour le creer le produit pour le depôt 
     path("depotProdut/", DepotProductCreate.as_view(), name="depot_product"),

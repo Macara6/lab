@@ -301,11 +301,7 @@ class CategoryByUserView(generics.ListAPIView):
         user_id = self.kwargs.get('user_id')
         return Category.objects.filter(user_created__id=user_id)
 
-#api pour creer le produit
-class ProductCreateView(generics.CreateAPIView):
-    queryset = Product.objects.all()
-    serializer_class =  ProductCreateSerializer
-    permission_classes = [IsAuthenticated]
+
 
 #api pour creer un produit du depôt 
 class DepotProductCreate(generics.CreateAPIView):
@@ -338,6 +334,13 @@ class UserProfilUpdateView(generics.UpdateAPIView):
         serializer.save(user=self.request.user)
 #fin de la fonction            
 
+#api pour creer le produit
+class ProductCreateView(generics.CreateAPIView):
+    queryset = Product.objects.all()
+    serializer_class =  ProductCreateSerializer
+    permission_classes = [IsAuthenticated]
+
+
 class ProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
     def get_queryset(self):
@@ -362,7 +365,48 @@ class ProductDetailView(generics.RetrieveUpdateAPIView):
         instance =self.get_object()
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+# views pour ajout stock
+class AddStockView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, pk):
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            raise Response({"error" :"Produit introuvable"}, status=status.HTTP_404_NOT_FOUND)
+        quantity = request.data.get("quantity",None)
+        
+        if quantity  is None:
+             return Response({"error": "Le champ 'quantity' est requis."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            quantity = int(quantity)
+        except:
+            return Response({"error": "La quantité doit être un nombre."}, status=status.HTTP_400_BAD_REQUEST)
+        if quantity <= 0:
+            return Response({"error": "La quantité doit être positive."}, status=status.HTTP_400_BAD_REQUEST)
+        product.add_stock(quantity, request.user)
+        
+        return Response({
+            "message": "Stock ajouté avec succès",
+            "product_id": product.id,
+            "quantity_added": quantity,
+            "stock_before": product.stock - quantity,
+            "stock_after": product.stock
+        }, status=status.HTTP_200_OK)
 
+class StockHistoryView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = StockHistorySerialize
+    
+    def get_queryset(self):
+       queryset = StockHistory.objects.all()
+       user_id = self.request.query_params.get('added_by', None)
+
+       if user_id is not None:
+         queryset = queryset.filter(added_by = user_id)
+         return queryset      
+     
+   
 
 class CreateInvoiceView(generics.CreateAPIView):
     queryset = Invoice.objects.all()
