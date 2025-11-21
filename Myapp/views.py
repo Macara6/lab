@@ -403,10 +403,14 @@ class StockHistoryView(generics.ListAPIView):
        user_id = self.request.query_params.get('added_by', None)
 
        if user_id is not None:
-         queryset = queryset.filter(added_by = user_id)
+         queryset = queryset.filter(added_by = user_id).order_by('-created_at')
          return queryset      
      
-   
+class DeleteStockHistoryView(RetrieveDestroyAPIView):
+    queryset = StockHistory.objects.all()
+    serializer_class= StockHistorySerialize
+    permission_classes=[IsAuthenticated]
+    lookup_field ='id'
 
 class CreateInvoiceView(generics.CreateAPIView):
     queryset = Invoice.objects.all()

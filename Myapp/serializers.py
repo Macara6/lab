@@ -261,18 +261,20 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
         return userprofile.currency_preference if userprofile else None
 #fonction pour le profile
 class UserProfilViewSerializer(serializers.ModelSerializer):
-
+    user_name = serializers.CharField(source ="user.username", read_only= True)
+    
     class Meta:
         model = UserProfile
         fields = [
             'user',
+            'user_name',
             'entrep_name',
             'phone_number',
             'adress',
             'rccm_number',
             'impot_number',
             'currency_preference'
-        ]  
+        ]
 
 class SubscriptionSerialize(serializers.ModelSerializer):
     class Meta:
