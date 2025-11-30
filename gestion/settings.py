@@ -124,9 +124,20 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         # Other authentication classes can be added here
     ),
-    # Other settings...
+        # Améliore les performances sur les gros volumes
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 100, 
+    
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    )
  
 }
+
+
+
+
+
 
 
 

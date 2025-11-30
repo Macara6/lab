@@ -11,7 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
    
     class Meta:
         model = User
-        fields = ['id','username','first_name','last_name','email','password','date_joined','is_superuser']
+        fields = ['id','username','first_name','last_name','email','password','date_joined','is_superuser','status','deleted_at','permanent_delete_at']
         extra_kwargs = {
             'password':{'write_only':True},
             'date_joined': {'read_only': True}
@@ -37,7 +37,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id','username','first_name','last_name','email','date_joined']
-        read_only_fields = ['id','username']
+        read_only_fields = ['id']
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()   
@@ -66,18 +66,26 @@ class CreateCategorySerializer(serializers.ModelSerializer):
 
 #serializer pour afficher le produits 
 class ProductSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_name = serializers.SerializerMethodField()
+    user_created_name = serializers.CharField(source='user_created.username', read_only=True)
+
     class Meta:
         model = Product
-        fields = ['id','name','price','purchase_price','stock','category','category_name','user_created','created_at','barcode','expiration_date','tva']
-        extra_kwargs = {
-            'puchase_price':{'required':True},
-            'created_at':{'required':True}
-        }
-        
+        fields = [
+            'id', 'name', 'price', 'purchase_price', 'stock',
+            'category', 'category_name', 'user_created', 'user_created_name',
+            'created_at', 'barcode', 'expiration_date', 'tva'
+        ]
+
+    def get_category_name(self, obj):
+        # Toujours renvoyer une string
+        return obj.category.name if obj.category else "Aucune"
+ # Affiche un tiret si pas de catégorie
+
 #serializer pour creer le produit 
 class ProductCreateSerializer(serializers.ModelSerializer):
     barcode = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    user_created_name=serializers.CharField(source='user_created.username', read_only=True)
     class Meta:
         model = Product
         fields = [
@@ -87,6 +95,7 @@ class ProductCreateSerializer(serializers.ModelSerializer):
             'stock',
             'category',
             'user_created',
+            'user_created_name',
             'barcode',
             'expiration_date',
             'tva',
@@ -106,7 +115,9 @@ class StockHistorySerialize(serializers.ModelSerializer):
             'new_stock',
             'added_by',
             'added_by_name',
-            'created_at'
+            'created_at',
+            'status',
+            'motif'
         ]
 #serializer pour creer un nouveau produit du depôt
 class DepotProductCreateSerializer(serializers.ModelSerializer):

@@ -1,14 +1,17 @@
 from django.urls import path
 from.views import *
 from . import views
+from django.views.decorators.cache import cache_page
 
 urlpatterns = [
     path('',views.index, name='index'),
     path('login/',LoginView.as_view(), name='login'),
     #route pour le produit pour le stock
-    path('products/', ProductListView.as_view(), name='products'),
+    path('products/', cache_page(60)(ProductListView.as_view())),
+    path('productCreate/',ProductCreateView.as_view(), name='product-create'),
     path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
     path('products/addStock/<int:pk>/', AddStockView.as_view(), name='ajout_stock'),
+    path('products/subtractStock/<int:pk>/', SubtractStockView.as_view(), name='sortie_stock'),
     path('stockHistoryViews/', StockHistoryView.as_view(), name="views_history_stock"),
     path('stockHistory/delete/<int:id>/', DeleteStockHistoryView.as_view(), name='delete_history'),
 
@@ -30,13 +33,16 @@ urlpatterns = [
     path('category/delete/<int:id>/', DeleteCategorieView.as_view(), name='delete-categorie'),
     path('category/by-user/<int:user_id>/', CategoryByUserView.as_view(), name='categorie-by-user'),
     #fin  
-    path('productCreate/',ProductCreateView.as_view(), name='product-create'),
+    
     #route pour l'utilisateur
     path('userCreate/', UserCreateView.as_view(), name='user-create'),
     path('users/created-by-me/', UsersCreatedByMeView.as_view(), name='users-created-by-me'),
     path('userUpdateView/<int:user__id>/',UpdatUserVieuw.as_view, name='user-update' ),
     path('usersView/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('user/delete/<int:id>/',DeleteUserView.as_view(), name='delete-user'),
+    path("users/restore/<int:id>/", RestoreUserView.as_view(), name="restore-user"),
+    path("users/delete-permanent/<int:id>/", PermanentDeleteUserView.as_view(), name="delete-user-permanent"),
+    path("users/trashed/", TrashedUsersListView.as_view(), name="trashed-users"),
     path('user/update/', UpdateUserApiView.as_view(), name='update-user'),
 
     #route pour le mot de passe 

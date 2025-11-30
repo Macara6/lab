@@ -9,6 +9,19 @@ import random
 
 
 class CustomUser(AbstractUser):
+
+    ADMIN ='ADMIN'
+    CAISSIER='CAISSIER'
+    GESTIONNAIRE_STOCK = 'GESTIONNAIRE_STOCK'
+
+    ROLE_CHOICES = [
+        (ADMIN, 'Administrateur'),
+        (CAISSIER, 'Caissier'),
+        (GESTIONNAIRE_STOCK, 'Gestionnaire de stock'),
+    ]
+
+    status = models.CharField(max_length=30, choices=ROLE_CHOICES, default=ADMIN)
+
     created_by = models.ForeignKey(
         'self',
         null=True,
@@ -17,8 +30,12 @@ class CustomUser(AbstractUser):
         related_name='created_users'
     )
 
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    permanent_delete_at = models.DateTimeField(null=True, blank=True) 
+    
     def __str__(self):
-        return self.username
+        return f"{self.username} ({self.status})"
 
 class PasswordResetToken(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -74,22 +91,24 @@ class Category(models.Model):
 
 
 class Product(models.Model):
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, db_index=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.PositiveIntegerField(default=0)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    user_created = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    barcode = models.CharField(max_length=100, blank=True, null=True) 
-    expiration_date = models.DateField(blank=True, null=True)
+
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null= True, db_index=True)
+
+    user_created = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    barcode = models.CharField(max_length=100, blank=True, null=True, db_index=True) 
+    expiration_date = models.DateField(blank=True, null=True, db_index=True)
     tva = models.BooleanField(default=True) 
 
     def __str__(self):
         created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
         return f"{self.name} - {created_at}"
     
-    def add_stock(self, quantity, user):
+    def add_stock(self, quantity,motif, user):
         previous = self.stock
         self.stock += quantity
         self.save()
@@ -99,20 +118,50 @@ class Product(models.Model):
             quantity_added = quantity,
             previous_stock = previous,
             new_stock = self.stock,
-            added_by = user
+            added_by = user,
+            status ='ENTRER',
+            motif=motif
         )
+
+    def subtract_stock(self, quantity, motif, user):
+        previous = self.stock
+        self.stock -= quantity
+        self.save()
+
+        StockHistory.objects.create(
+            product = self,
+            quantity_added = quantity,
+            previous_stock = previous,
+            new_stock = self.stock,
+            added_by=user,
+            status='SORTIE',
+            motif=motif
+        )
+
     
 # model pour l'historique du stock
 class StockHistory(models.Model):
+    SORTIE = 'SORTIE'
+    ENTRER = 'ENTRER'
+    
+    STATUS_TYPE = [
+        (SORTIE,'Sortie'),
+        (ENTRER,'Entrer'),
+    ]
+
+
     product = models.ForeignKey(Product, related_name='stock_history', on_delete=models.CASCADE)
     quantity_added = models.PositiveBigIntegerField()
     previous_stock = models.PositiveBigIntegerField()
     new_stock = models.PositiveBigIntegerField()
     added_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, choices=STATUS_TYPE,default='N/A')
+    motif = models.CharField(max_length=40, null=True)
     
     def __str__(self):
         return f"{self.product.name} | + {self.quantity_added} | {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
 
 class DepotProduct(models.Model):
     name = models.CharField(max_length=50)
@@ -204,11 +253,15 @@ class Subscription(models.Model):
     BASIC = 'BASIC'
     MEDIUM = 'MEDIUM'
     PREMIUM = 'PREMIUM'
+    PLATINUM ='PLATINUM'
+    DIAMOND = 'DIAMOND'
 
     SUBSCRIPTION_TYPES = [
         (BASIC, 'Basic'),
         (MEDIUM, 'Medium'),
         (PREMIUM, 'Premium'),
+        (PLATINUM,'Platinum'),
+        (DIAMOND, 'Diamond'),
     ]
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

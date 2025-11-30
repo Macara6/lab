@@ -1,6 +1,6 @@
 
 
-
+from django.db.models import Q
 import random
 from django.shortcuts import get_object_or_404
 from .serializers import *
@@ -17,7 +17,7 @@ from rest_framework.generics import RetrieveDestroyAPIView
 from django.template import loader
 from django.http import HttpResponse
 from django.db.models import F, Sum, ExpressionWrapper, FloatField
-
+from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
@@ -62,6 +62,10 @@ class LoginView(APIView):
         if user is  None:
              return Response({'error': 'Compte non trouvé ou identifiants invalides'}, status=status.HTTP_401_UNAUTHORIZED)
         
+
+        #si l'utilisateur est supprimer
+        if user.is_deleted:
+            return Response({'error': 'Compte non trouvé ou identifiants invalides'}, status=status.HTTP_401_UNAUTHORIZED)
         #Superutilisateur : accès directe
         if user.is_superuser:
             token = RefreshToken.for_user(user)
@@ -70,7 +74,7 @@ class LoginView(APIView):
                 'username': user.username,
                 'email': user.email,
                 'token': str(token.access_token),
-                'is_superuser': user.is_superuser
+                'is_superuser': user.is_superuser,
             }, status=status.HTTP_200_OK)
             
          #utilisateur creer par un simple utilisateur: verification de l'abonnement du parent 
@@ -99,7 +103,9 @@ class LoginView(APIView):
             'id':user.id,
             'username':user.username,
             'email':user.email,
-            'token':str(token.access_token  ) 
+            'token':str(token.access_token),
+            'status':user.status, 
+            'is_superuser': user.is_superuser,
         }, status = status.HTTP_200_OK)
         
 
@@ -110,73 +116,114 @@ class UserCreateView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
+    PERENT_LIMITS = {
+            'BASIC':   {'ADMIN': 0, 'CAISSIER':0 , 'GESTIONNAIRE_STOCK':0},
+            'MEDIUM':  {'ADMIN':0 , 'CAISSIER':0, 'GESTIONNAIRE_STOCK':0},
+            'PREMIUM': {'ADMIN':1, 'CAISSIER':1, 'GESTIONNAIRE_STOCK':1},
+            'PLATINUM': {'ADMIN':3, 'CAISSIER':1, 'GESTIONNAIRE_STOCK':1},
+            'DIAMOND':  {'ADMIN':4, 'CAISSIER':1, 'GESTIONNAIRE_STOCK':1},
+        }
+    
+    CHILD_ADMIN_LIMITS = {
+        'ADMIN': {'ADMIN': 0, 'CAISSIER': 1, 'GESTIONNAIRE_STOCK': 1},
+        'CAISSIER': {'ADMIN': 0, 'CAISSIER': 0, 'GESTIONNAIRE_STOCK': 0},
+        'GESTIONNAIRE_STOCK': {'ADMIN': 0, 'CAISSIER': 0, 'GESTIONNAIRE_STOCK': 0},
+    }
+
+
     def post(self, request,*args, **kwargs):
         current_user =request.user
 
-        if not current_user.is_superuser:
-            try:
-                parent_subscription = Subscription.objects.get(user=current_user)
-                if parent_subscription.is_expired():
-                     return Response({'detail': "Votre abonnement a expiré."}, status=status.HTTP_403_FORBIDDEN)
-            except Subscription.DoesNotExist:
-                return Response({'detail': 'Aucun abonnement trouvé.'}, status=status.HTTP_403_FORBIDDEN)
-        #pour le sur utilisateur 
         if current_user.is_superuser:
-            serializer = self.get_serializer(data=request.data)
-            if serializer.is_valid():
-                user = serializer.save()
-                user.created_by = current_user
-                user.save()
+            return self._create_user(request,current_user)
+
+        if Subscription.objects.filter(user=current_user).exists():
+            subscription = Subscription.objects.get(user=current_user)
+
+            if subscription.is_expired():
                 return Response({
-                    'id':user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'message':'User created successfully'
-                }, status = status.HTTP_201_CREATED )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-                
-        try:
-            subscription =Subscription.objects.get(user = current_user)
-        except Subscription.DoesNotExist:
-            return Response({'detail': 'Aucun abonnement trouvé.'}, status=status.HTTP_400_BAD_REQUEST)
+                    'detail':"Votre abonnement a expiré"
+                },status=status.HTTP_403_FORBIDDEN)
+            
+            limits = self.PERENT_LIMITS[subscription.subscription_type.upper()]
+            if current_user.status !='ADMIN':
+                return Response({'detaitl':"Vous n'avez pas l'autorisation de créer des utilisateurs"},
+                                status=status.HTTP_403_FORBIDDEN)
+        else:
+            parent = current_user.created_by
+            if not parent:
+                return Response({'detail':"Vous n'avez pas d'abonnement ni de parent actif?"},
+                                status=status.HTTP_403_FORBIDDEN)
+            if not parent.is_superuser:
+                try:
+                    parent_sub =Subscription.objects.get(user=current_user)
+                    if parent_sub.is_expired():
+                        return Response({'detail':"L'abonnement de votre créateur a expiré."},
+                                        status=status.HTTP_403_FORBIDDEN)
+            
+                except Subscription.DoesNotExist:
+                    return Response({'detail':"Votre créateur n'a pas d'abonnement actif."},
+                             status=status.HTTP_403_FORBIDDEN)
+            
+            limits =self.CHILD_ADMIN_LIMITS[current_user.status]
+
+            if current_user.status != 'ADMIN':
+                return Response({'detail':"Vous n'avez pas l'autorisation de créer des utilisateurs"},
+                     status=status.HTTP_403_FORBIDDEN)
         
-        subscription_limits ={
-
-            'PREMIUM': 3,
-            'MEDIUM': 2,
-            'BASIC': 0
-        }
-
-        limit = subscription_limits.get(subscription.subscription_type.upper(),0)
-        created_users_count = User.objects.filter(created_by = current_user).count()
-
-        if created_users_count >= limit:
+        requested_role = request.data.get('status',None)
+        if requested_role not in ['ADMIN','CAISSIER','GESTIONNAIRE_STOCK']:
+            return Response({'detail':"Rôle invalide"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        max_allowed = limits[requested_role]
+        current_count = User.objects.filter(
+            created_by=current_user,
+            status=requested_role
+        ).count()
+        if current_count >= max_allowed:
             return Response({
-                'detail': f"Limite atteinte. Votre abonnement {subscription.subscription_type} permet de créer {limit} utilisateur(s)."
-            }, status=status.HTTP_403_FORBIDDEN)
+                'detail':(
+                    f"Limite atteinte pour le rôle {requested_role}. "
+                    f"Vous pouvez créer {max_allowed} utilisateur(s) de ce type."
+               )
+            },status=status.HTTP_403_FORBIDDEN)
         
+        return self._create_user(request, current_user)
+
         #creation de l'utilisateur 
-        serializer = self.get_serializer(data = request.data)
+    def _create_user(self, request, creator):
+
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            user.created_by = current_user
-            user.is_active=True
+            user.created_by = creator
+            user.is_active = True
             user.save()
 
             return Response({
-                'id':user.id,
+                'id': user.id,
                 'username': user.username,
                 'email': user.email,
-                'message': 'Utilisateur créé avec succès'
+                'status': user.status,
+                'message': "Utilisateur créé avec succès"
             }, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 
 class UsersCreatedByMeView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return User.objects.filter(created_by=self.request.user)
+        return User.objects.filter(created_by=self.request.user, is_deleted = False)
+    
+class TrashedUsersListView(generics.ListAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return User.objects.filter(created_by= self.request.user, is_deleted =True)
 
 
 class UserDetailView(generics.RetrieveAPIView):
@@ -203,12 +250,53 @@ class UpdatUserVieuw(generics.UpdateAPIView):
     def perform_update(self, serializer):
      serializer.save()# ou self.kwargs['pk']
 
- #fonction pour supprimer l'utilisateur     
+ #fonction pour supprimer  mettre l'utilisateur dans la corbeille l'utilisateur     
 class DeleteUserView(RetrieveDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
     lookup_field ='id'
+
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+
+        if user.is_deleted:
+            return Response({"message": "Cet utilisateur est déjà dans la corbeille."}, status=200)
+        user.is_deleted =True
+        user.deleted_at = now()
+        user.permanent_delete_at = now() + timedelta(days=30) 
+        user.save()
+
+        return Response({"message": "Utilisateur envoyé dans la corbeille."}, status=200)
+    
+# fonction pour restaure l'utilisateur 
+class RestoreUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        try:
+            user = User.objects.get(id=id, is_deleted = True)
+        except User.DoesNotExist:
+            return Response({"error": "Utilisateur introuvable dans la corbeille."}, status=404)
+        user.is_deleted = False
+        user.deleted_at = None
+        
+        user.save()
+
+        return Response({"message":"utilisateur restaurée avec succès"})
+
+#supprimer directe
+class PermanentDeleteUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, id):
+        try:
+            user = User.objects.get(id=id, is_deleted = True)
+        except User.DoesNotExist:
+             return Response({"error": "Utilisateur non trouvé dans la corbeille."}, status=404)
+        
+        user.delete()
+        return Response({"message": "Utilisateur supprimé définitivement."}, status=200)
 
 #fonction pour changer le mot de passe 
 class ChangePasswordView(generics.UpdateAPIView):
@@ -298,7 +386,42 @@ class CategoryByUserView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        user = self.request.user
         user_id = self.kwargs.get('user_id')
+
+        if not user or not user.is_authenticated:
+            return Category.objects.none()
+    
+        querey_filter = Q()
+
+        if user_id :
+            target_user_id = int(user_id)
+            target_user = User.objects.filter(pk=target_user_id).only('id','status','created_by').first()
+
+            if target_user:
+                if target_user.status == User.ADMIN:
+                    querey_filter = Q(user_created_id=target_user.id)
+                elif target_user.status in [User.CAISSIER, User.GESTIONNAIRE_STOCK] and user.created_by_id:
+                    querey_filter = Q(user_created_id=user.created_by_id)
+                else:
+                    return Category.objects.none()
+            else:
+                return Category.objects.none()
+        else:
+            if user.status == User.ADMIN:
+                querey_filter = Q(user_created_id=user.id)
+
+            elif user.status in [User.CAISSIER, User.GESTIONNAIRE_STOCK] and user.created_by_id:
+                 querey_filter = Q(user_created_id = user.created_by_id)
+            else:
+                return Category.objects.none()
+        
+        return Category.objects.filter(querey_filter).select_related('user_created')
+        
+
+
+
+
         return Category.objects.filter(user_created__id=user_id)
 
 
@@ -314,12 +437,34 @@ class DepotProductCreate(generics.CreateAPIView):
 #APi pour user profil 
 class UserProfilView(generics.ListAPIView):
         serializer_class = UserProfilViewSerializer
+        permission_classes = [IsAuthenticated]
+
         def get_queryset(self):
-            querset = UserProfile.objects.all()
-            user_id = self.request.query_params.get('user')
-            if user_id is not None:
-                querset = querset.filter(user= user_id)
-                return querset
+            request_user = self.request.user
+
+            if not request_user or not request_user.is_authenticated:
+                return UserProfile.objects.none()
+            
+            user_created_parma = self.request.query_params.get('user')
+
+            if user_created_parma:
+                try:
+                    target_user = User.objects.get(pk=int(user_created_parma))
+                except (User.DoesNotExist, ValueError):
+                    return UserProfile.objects.none()
+            else:
+                target_user = request_user
+            if target_user.status == User.ADMIN:
+                return UserProfile.objects.filter(user=target_user)
+            if target_user.status == User.CAISSIER or target_user.status == User.GESTIONNAIRE_STOCK:
+
+                if target_user.created_by:
+                    return UserProfile.objects.filter(user=target_user.created_by)
+                return UserProfile.objects.none()
+            
+            return UserProfile.objects.none()
+            
+            
             
 #API pour la modification du profil
 class UserProfilUpdateView(generics.UpdateAPIView):
@@ -328,10 +473,12 @@ class UserProfilUpdateView(generics.UpdateAPIView):
      permission_classes = [IsAuthenticated]
 
      def get_object(self):
-        return UserProfile.objects.get(user=self.request.user)
+        user_id = self.request.data.get("user")
+        return UserProfile.objects.get(user__id=user_id)
 
      def perform_update(self, serializer):
-        serializer.save(user=self.request.user)
+       
+        serializer.save()
 #fin de la fonction            
 
 #api pour creer le produit
@@ -340,17 +487,68 @@ class ProductCreateView(generics.CreateAPIView):
     serializer_class =  ProductCreateSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if user.status == 'ADMIN':
+            serializer.save(user_created=user)
+
+        elif user.status =='GESTIONNAIRE_STOCK':
+            creator_user = getattr(user, 'created_by', None)
+            if creator_user:
+                serializer.save(user_created=creator_user)
+            else:
+                serializer.save(user_created=user)
+        else:
+            serializer.save(user_created=user)
+
+
+
+
+
 
 class ProductListView(generics.ListAPIView):
     serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticated]   # Empeche AnonymousUser
+
     def get_queryset(self):
-       queryset = Product.objects.all()
-       user_id =  self.request.query_params.get('user_created', None)
+        user = self.request.user
+        
+        if not user or not user.is_authenticated:
+            return Product.objects.none()
 
-       if user_id is not None:
-           queryset = queryset.filter(user_created = user_id)
-           return queryset
+        user_created_param = self.request.query_params.get('user_created', None)
 
+        querey_filter = Q()
+
+
+        if user_created_param and user_created_param.isdigit():
+            target_user_id = int(user_created_param)
+            
+            target_user = User.objects.filter(pk=target_user_id).only('id','status', 'created_by').first()
+
+            if target_user:
+                if target_user.status == User.ADMIN:
+                    querey_filter = Q(user_created_id=target_user.id)
+                elif target_user.status in [User.CAISSIER , User.GESTIONNAIRE_STOCK] and target_user.created_by_id:
+                    querey_filter = Q(user_created_id = target_user.created_by)
+                else:
+                    return Product.objects.none()
+            else:
+                return Product.objects.none()
+        else:
+
+            if user.status == User.DAMIN:
+                querey_filter = Q(user_creted_id=user.id)
+            elif user.status in [User.CAISSIER, User.GESTIONNAIRE_STOCK] and user.created_by_id:
+                querey_filter = Q(user_created_id=user.created_by_id)
+            else:
+                return Product.objects.none()
+            
+        # Par défaut : rien
+        return Product.objects.filter(querey_filter).select_related('user_created')
+       
+    
 
 class ProductDetailView(generics.RetrieveUpdateAPIView):
     queryset = Product.objects.all()
@@ -373,8 +571,9 @@ class AddStockView(APIView):
         try:
             product = Product.objects.get(pk=pk)
         except Product.DoesNotExist:
-            raise Response({"error" :"Produit introuvable"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error" :"Produit introuvable"}, status=status.HTTP_404_NOT_FOUND)
         quantity = request.data.get("quantity",None)
+        motif = request.data.get("motif", None)
         
         if quantity  is None:
              return Response({"error": "Le champ 'quantity' est requis."}, status=status.HTTP_400_BAD_REQUEST)
@@ -384,7 +583,7 @@ class AddStockView(APIView):
             return Response({"error": "La quantité doit être un nombre."}, status=status.HTTP_400_BAD_REQUEST)
         if quantity <= 0:
             return Response({"error": "La quantité doit être positive."}, status=status.HTTP_400_BAD_REQUEST)
-        product.add_stock(quantity, request.user)
+        product.add_stock(quantity, motif,request.user)
         
         return Response({
             "message": "Stock ajouté avec succès",
@@ -393,6 +592,42 @@ class AddStockView(APIView):
             "stock_before": product.stock - quantity,
             "stock_after": product.stock
         }, status=status.HTTP_200_OK)
+
+
+class SubtractStockView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request, pk):
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return Response({"error":"Produit introuvable"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        quantity = request.data.get("quantity",None)
+        motif = request.data.get("motif", None)
+
+        if quantity is None:
+            return Response({"error":"Le champ 'quantity' est requis"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            quantity = int(quantity)
+        except:
+            return Response({"error":"la quantity doit être un nombre"}, status=status.HTTP_400_BAD_REQUEST)
+        if quantity <= 0:
+            return Response({"error":"la quantité doit être positive"},status=status.HTTP_400_BAD_REQUEST)
+        
+        stock_before = product.stock
+        product.subtract_stock(quantity,motif, request.user)
+
+        product.refresh_from_db()
+        stock_after = product.stock
+        return Response({
+            "message":"Stock retirer avec succès",
+            "product_id":product.id,
+            "quantity_added":quantity,
+            "stock_before": stock_before,
+            "stock_after":stock_after
+        }, status=status.HTTP_200_OK)
+
 
 class StockHistoryView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
