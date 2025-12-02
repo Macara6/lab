@@ -108,6 +108,7 @@ class LoginView(APIView):
             'is_superuser': user.is_superuser,
         }, status = status.HTTP_200_OK)
         
+#fonction pour verifier la limite 
 
 
 
@@ -175,12 +176,11 @@ class UserCreateView(generics.CreateAPIView):
         if requested_role not in ['ADMIN','CAISSIER','GESTIONNAIRE_STOCK']:
             return Response({'detail':"Rôle invalide"}, status=status.HTTP_400_BAD_REQUEST)
         
-        max_allowed = limits[requested_role]
-        current_count = User.objects.filter(
-            created_by=current_user,
-            status=requested_role
-        ).count()
-        if current_count >= max_allowed:
+        is_allowed,max_allowed =self.check_role_limit(current_user,requested_role, )
+
+  
+
+        if not is_allowed:
             return Response({
                 'detail':(
                     f"Limite atteinte pour le rôle {requested_role}. "
@@ -209,7 +209,29 @@ class UserCreateView(generics.CreateAPIView):
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+    def check_role_limit(self, parent_user, requested_role):
+
+        if parent_user.is_superuser:
+            max_allowed = None  
+        else:
+            if Subscription.objects.filter(user=parent_user).exists():
+                subscription = Subscription.objects.get(user=parent_user)
+                limits = self.PERENT_LIMITS[subscription.subscription_type.upper()]
+            else:
+                limits = self.CHILD_ADMIN_LIMITS[parent_user.status]
+
+            max_allowed = limits.get(requested_role, 0)
+            
+        current_count = User.objects.filter(
+            created_by=parent_user,
+            status=requested_role,
+            is_deleted=False
+        ).count()
+
+        if max_allowed is not None and current_count >= max_allowed:
+            return False, max_allowed
+
+        return True, max_allowed
 
 class UsersCreatedByMeView(generics.ListAPIView):
     serializer_class = UserSerializer
@@ -278,9 +300,24 @@ class RestoreUserView(APIView):
             user = User.objects.get(id=id, is_deleted = True)
         except User.DoesNotExist:
             return Response({"error": "Utilisateur introuvable dans la corbeille."}, status=404)
+        
+        parent_user= user.created_by
+        requested_role = user.status
+
+        checker = UserCreateView()
+        is_allowed, max_allowed =checker.check_role_limit(parent_user,requested_role)
+
+        if not is_allowed:
+            return Response({
+                "detail": (
+                    f"Impossible de restaurer cet utilisateur : "
+                    f"la limite pour le rôle {requested_role} est déjà atteinte "
+                    f"({max_allowed} maximum)."
+                )
+            }, status=status.HTTP_403_FORBIDDEN)
+        
         user.is_deleted = False
         user.deleted_at = None
-        
         user.save()
 
         return Response({"message":"utilisateur restaurée avec succès"})
@@ -344,6 +381,41 @@ class SecretAccessKeyCreateUpdateView(generics.CreateAPIView, generics.UpdateAPI
             serializer.is_valid(raise_exception = True)
             self.perform_create(serializer)
             return Response({'detail': 'Clé créée avec succès'}, status=status.HTTP_201_CREATED)
+    
+
+    def delete(self, request, *args, **kwargs):
+        existing = self.get_object()
+        if not existing:
+            return Response(
+                {'detail':'Aucune clé secrète trouvée.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        old_key= request.data.get('old_key')
+
+        if not old_key:
+            return Response(
+                {'detail':"Veuillez fournir l'acienne  clé secrète."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        secrete = SecretAccessKey.objects.filter(user=request.user).first()
+        if secrete and secrete.check_key(old_key):
+            secrete.delete()
+
+            return Response(
+                    {"detail":"Clé supprimer avec succeès"},
+                    status=status.HTTP_200_OK
+                )
+       
+        else:
+             return Response(
+                {"detail":"code incorecte"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+
+        
 
 class SecretKeyStatusView(APIView):
     permission_classes = [IsAuthenticated]
@@ -418,11 +490,6 @@ class CategoryByUserView(generics.ListAPIView):
         
         return Category.objects.filter(querey_filter).select_related('user_created')
         
-
-
-
-
-        return Category.objects.filter(user_created__id=user_id)
 
 
 

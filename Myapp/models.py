@@ -33,7 +33,7 @@ class CustomUser(AbstractUser):
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
     permanent_delete_at = models.DateTimeField(null=True, blank=True) 
-    
+
     def __str__(self):
         return f"{self.username} ({self.status})"
 
@@ -64,7 +64,9 @@ class UserProfile(models.Model):
     adress = models.CharField(max_length=40, null=True, blank=True)
     rccm_number = models.CharField(max_length=40)
     impot_number = models.CharField(max_length=255)
+    id_nat=models.CharField(max_length=23, null=True, default='N/A')
     currency_preference = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='CDF')
+
 
 class SecretAccessKey(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)

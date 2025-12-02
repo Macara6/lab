@@ -284,7 +284,9 @@ class UserProfilViewSerializer(serializers.ModelSerializer):
             'adress',
             'rccm_number',
             'impot_number',
-            'currency_preference'
+            'id_nat',
+            'currency_preference',
+
         ]
 
 class SubscriptionSerialize(serializers.ModelSerializer):
