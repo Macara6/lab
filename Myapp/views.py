@@ -120,8 +120,8 @@ class UserCreateView(generics.CreateAPIView):
     PERENT_LIMITS = {
             'BASIC':   {'ADMIN': 0, 'CAISSIER':0 , 'GESTIONNAIRE_STOCK':0},
             'MEDIUM':  {'ADMIN':0 , 'CAISSIER':0, 'GESTIONNAIRE_STOCK':0},
-            'PREMIUM': {'ADMIN':1, 'CAISSIER':1, 'GESTIONNAIRE_STOCK':1},
-            'PLATINUM': {'ADMIN':3, 'CAISSIER':1, 'GESTIONNAIRE_STOCK':1},
+            'PREMIUM': {'ADMIN':1, 'CAISSIER':2, 'GESTIONNAIRE_STOCK':1},
+            'PLATINUM': {'ADMIN':3, 'CAISSIER':2, 'GESTIONNAIRE_STOCK':2},
             'DIAMOND':  {'ADMIN':4, 'CAISSIER':1, 'GESTIONNAIRE_STOCK':1},
         }
     
@@ -413,10 +413,16 @@ class SecretAccessKeyCreateUpdateView(generics.CreateAPIView, generics.UpdateAPI
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+#API pour verifier l'existance de l'abonnement
+class SubsriptionStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        has_sub = Subscription.objects.filter(user = request.user).exists()
+        return Response({'has_sub':has_sub})
 
 
         
-
+# API pour verifier le status du code secret
 class SecretKeyStatusView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):

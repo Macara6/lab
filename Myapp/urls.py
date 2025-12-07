@@ -64,6 +64,7 @@ urlpatterns = [
     path('subscription/<int:user__id>/', SubscriptionByUserView.as_view(), name='subscription-by-user'),
     path('subscription/reactivate/<int:user_id>/', ReactivateSubscriptionView.as_view(), name='reactivate-subscription'),
     path('subscription/user/<int:user_id>/',SubscriptionByUserAndChildUserView.as_view(), name='subscription-user'),
+    path('subscription/status/',SubsriptionStatusView.as_view(), name="subscription_status"),
     
     #route pour le profile
     path('userProfil/', UserProfilView.as_view(), name='user_profil'),
