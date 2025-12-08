@@ -160,8 +160,8 @@ sentry_sdk.init(
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 #  data base in django
-'''
 
+'''
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -185,6 +185,11 @@ DATABASES = {
     }
 }
 
+
+
+AUTHENTICATION_BACKENDS = [
+    'Myapp.backends.CaseSensitiveModelBackend',  # ton backend sensible à la casse
+]
 
 
 AUTH_USER_MODEL = 'Myapp.CustomUser'

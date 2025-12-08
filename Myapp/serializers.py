@@ -242,9 +242,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
         return invoice
 
-    
 class InvoicesViewSerializer(serializers.ModelSerializer):
-    # ⚡ Utilise le champ annoté directement
     profit_amount = serializers.FloatField(read_only=True)
     items = InvoiceItemSerializer(many=True, read_only=True)
     cashier_currency = serializers.SerializerMethodField()
@@ -269,9 +267,22 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
         ]
 
     def get_cashier_currency(self, obj):
-        # ⚡ Optimisé avec select_related
-        userprofile = getattr(obj.cashier, 'userprofile', None)
-        return userprofile.currency_preference if userprofile else None
+        # 1️⃣ Vérifie si le caissier a un profil
+        cashier_profile = getattr(obj.cashier, 'userprofile', None)
+        if cashier_profile and getattr(cashier_profile, 'currency_preference', None):
+            return cashier_profile.currency_preference
+
+        # 2️⃣ Sinon fallback sur le profil du parent
+        parent = getattr(obj.cashier, 'created_by', None)
+        parent_profile = getattr(parent, 'userprofile', None) if parent else None
+        if parent_profile and getattr(parent_profile, 'currency_preference', None):
+            return parent_profile.currency_preference
+
+        # 3️⃣ Si rien n’existe
+        return 'N/A'
+
+
+
 #fonction pour le profile
 class UserProfilViewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source ="user.username", read_only= True)

@@ -747,8 +747,9 @@ class InvoiceView(generics.ListAPIView):
         all_user_ids = list(child_users) if only_children else list(child_users) + [user.id]
 
         queryset = Invoice.objects.filter(cashier__in=all_user_ids).select_related(
-            'cashier', 'cashier__userprofile'
-        ).prefetch_related('items');
+            'cashier', 'cashier__userprofile', 'cashier__created_by', 'cashier__created_by__userprofile'
+        ).prefetch_related('items')
+
 
         queryset = queryset.annotate(
             profit_amount = Sum(
