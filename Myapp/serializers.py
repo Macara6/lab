@@ -211,35 +211,37 @@ class InvoiceSerializer(serializers.ModelSerializer):
         except:
             return None
 
-    def create(self,validated_data):
-        
+    def create(self, validated_data):
         items_data = validated_data.pop('items')
 
-        tva = Decimal("0")
-
-        total = Decimal("0")
-        for item in items_data:
-            product = item["product"]
-            total  += item["price"] * item["quantity"]
-        
-        if any(item['product'].tva for item in items_data):
-            tva = total * Decimal("0.16")
+        # Calcul du total et de la TVA
+        total = sum(item["price"] * item["quantity"] for item in items_data)
+        tva = sum(
+            (item["price"] * item["quantity"]) * Decimal("0.16")
+            for item in items_data
+            if item["product"].tva
+        )
 
         validated_data["tva"] = tva
         invoice = Invoice.objects.create(**validated_data)
 
+        # Création des items et mise à jour du stock
         for item_data in items_data:
             product = item_data['product']
             quantity = item_data['quantity']
 
             if product.stock < quantity:
                 raise serializers.ValidationError(
-                    f"Stock insuffisant pour le produit '{product.name}' (stock: {product.stock}, demandé: {quantity})"
+                    f"Stock insuffisant pour le produit '{product.name}' "
+                    f"(stock: {product.stock}, demandé: {quantity})"
                 )
+
             InvoiceItem.objects.create(invoice=invoice, **item_data)
             product.stock -= quantity
             product.save()
+
         return invoice
+
     
 class InvoicesViewSerializer(serializers.ModelSerializer):
     # ⚡ Utilise le champ annoté directement
