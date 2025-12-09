@@ -7,7 +7,7 @@ urlpatterns = [
     path('',views.index, name='index'),
     path('login/',LoginView.as_view(), name='login'),
     #route pour le produit pour le stock
-    path('products/', cache_page(60)(ProductListView.as_view())),
+    path('products/',(ProductListView.as_view())),
     path('productCreate/',ProductCreateView.as_view(), name='product-create'),
     path('products/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
     path('products/addStock/<int:pk>/', AddStockView.as_view(), name='ajout_stock'),

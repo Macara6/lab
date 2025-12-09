@@ -120,9 +120,9 @@ class UserCreateView(generics.CreateAPIView):
     PERENT_LIMITS = {
             'BASIC':   {'ADMIN': 0, 'CAISSIER':0 , 'GESTIONNAIRE_STOCK':0},
             'MEDIUM':  {'ADMIN':0 , 'CAISSIER':0, 'GESTIONNAIRE_STOCK':0},
-            'PREMIUM': {'ADMIN':1, 'CAISSIER':2, 'GESTIONNAIRE_STOCK':1},
-            'PLATINUM': {'ADMIN':3, 'CAISSIER':2, 'GESTIONNAIRE_STOCK':2},
-            'DIAMOND':  {'ADMIN':4, 'CAISSIER':1, 'GESTIONNAIRE_STOCK':1},
+            'PREMIUM': {'ADMIN':0, 'CAISSIER':2, 'GESTIONNAIRE_STOCK':1},
+            'PLATINUM': {'ADMIN':1, 'CAISSIER':3, 'GESTIONNAIRE_STOCK':2},
+            'DIAMOND':  {'ADMIN':4, 'CAISSIER':6, 'GESTIONNAIRE_STOCK':6},
         }
     
     CHILD_ADMIN_LIMITS = {
@@ -453,6 +453,19 @@ class CreateCategoryView(generics.CreateAPIView):
     serializer_class = CreateCategorySerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.status =='ADMIN':
+            serializer.save(user_created=user)
+        elif user.status == 'GESTIONNAIRE_STOCK':
+            creator_user = getattr(user, 'created_by',None)
+            if creator_user:
+                serializer.save(user_created=creator_user)
+            else:
+                serializer.save(user_created=user)
+        else:
+            serializer.save(user_created=user)
+            
 class DeleteCategorieView(generics.DestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategoryViewSerializer
