@@ -37,6 +37,7 @@ urlpatterns = [
     #route pour l'utilisateur
     path('userCreate/', UserCreateView.as_view(), name='user-create'),
     path('users/created-by-me/', UsersCreatedByMeView.as_view(), name='users-created-by-me'),
+    path('users-created-by/',UserCreatedByView.as_view(), name='utilisateur'),
     path('userUpdateView/<int:user__id>/',UpdatUserVieuw.as_view, name='user-update' ),
     path('usersView/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('user/delete/<int:id>/',DeleteUserView.as_view(), name='delete-user'),

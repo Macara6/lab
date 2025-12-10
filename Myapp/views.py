@@ -52,21 +52,21 @@ class CustomTokenRefreshView(TokenRefreshView):
         return Response({
             'token': new_token
         }, status= status.HTTP_200_OK)
-
+    
 class LoginView(APIView):
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
-        user = authenticate(request, username=username, password=password)
-        
-        if user is  None:
-             return Response({'error': 'Compte non trouvé ou identifiants invalides'}, status=status.HTTP_401_UNAUTHORIZED)
-        
 
-        #si l'utilisateur est supprimer
-        if user.is_deleted:
-            return Response({'error': 'Compte non trouvé ou identifiants invalides'}, status=status.HTTP_401_UNAUTHORIZED)
-        #Superutilisateur : accès directe
+        # 1️⃣ Authentification
+        user = authenticate(request, username=username, password=password)
+        if not user or user.is_deleted:
+            return Response(
+                {'error': 'Compte non trouvé ou identifiants invalides'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # 2️⃣ Superuser → accès direct
         if user.is_superuser:
             token = RefreshToken.for_user(user)
             return Response({
@@ -74,41 +74,50 @@ class LoginView(APIView):
                 'username': user.username,
                 'email': user.email,
                 'token': str(token.access_token),
-                'is_superuser': user.is_superuser,
+                'is_superuser': True,
+                'status': user.status
             }, status=status.HTTP_200_OK)
-            
-         #utilisateur creer par un simple utilisateur: verification de l'abonnement du parent 
-        if user.created_by and not user.created_by.is_superuser:
-            try:
-                parent_subscription = Subscription.objects.get(user=user.created_by)
-                if parent_subscription.is_expired():
-                    return Response({'error': "L'abonnement de votre administrateur a expiré."}, status=status.HTTP_401_UNAUTHORIZED)
-            except Subscription.DoesNotExist:
-                    return Response({'error': "Votre administrateur n'a pas d'abonnement actif."}, status=status.HTTP_401_UNAUTHORIZED)
-        
-        # Utilisateur créé par superuser → vérifier abonnement personnel
-        elif user.created_by and user.created_by.is_superuser:   
-            try:
-                subscription = Subscription.objects.get(user = user)
-                
-                if subscription.is_expired():
-                     return Response({'error': 'Votre abonnement a expiré. Veuillez renouveler.'}, status=status.HTTP_401_UNAUTHORIZED)
-            except Subscription.DoesNotExist:
-                return Response({'error': 'Aucun abonnement trouvé pour cet utilisateur.'}, status=status.HTTP_400_BAD_REQUEST)
-   
-               
+
+        #  Remonter la hiérarchie jusqu’à trouver un abonnement actif
+        top_parent, subscription = self.get_top_parent_with_subscription(user)
+
+        if not top_parent:
+            return Response(
+                {'error': "Aucun abonnement actif trouvé dans la hiérarchie."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # 4️⃣ Générer le token JWT
         token = RefreshToken.for_user(user)
 
-        return Response ({
-            'id':user.id,
-            'username':user.username,
-            'email':user.email,
-            'token':str(token.access_token),
-            'status':user.status, 
+        # 5️⃣ Retourner les infos de l’utilisateur
+        return Response({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'token': str(token.access_token),
             'is_superuser': user.is_superuser,
-        }, status = status.HTTP_200_OK)
-        
-#fonction pour verifier la limite 
+            'status': user.status,
+            'parent_id': top_parent.id,
+            'parent_status': top_parent.status
+        }, status=status.HTTP_200_OK)
+
+    def get_top_parent_with_subscription(self, user):
+        """
+        Remonte la hiérarchie (parent, grand-parent...) jusqu'à trouver
+        un abonnement actif.
+        Retourne (top_parent_user, subscription) ou (None, None)
+        """
+        parent = user
+        while parent:
+            try:
+                subscription = Subscription.objects.get(user=parent)
+                if not subscription.is_expired():
+                    return parent, subscription
+            except Subscription.DoesNotExist:
+                pass
+            parent = parent.created_by
+        return None, None
 
 
 
@@ -121,14 +130,12 @@ class UserCreateView(generics.CreateAPIView):
             'BASIC':   {'ADMIN': 0, 'CAISSIER':0 , 'GESTIONNAIRE_STOCK':0},
             'MEDIUM':  {'ADMIN':0 , 'CAISSIER':0, 'GESTIONNAIRE_STOCK':0},
             'PREMIUM': {'ADMIN':0, 'CAISSIER':2, 'GESTIONNAIRE_STOCK':1},
-            'PLATINUM': {'ADMIN':1, 'CAISSIER':3, 'GESTIONNAIRE_STOCK':2},
+            'PLATINUM': {'ADMIN':1, 'CAISSIER':3, 'GESTIONNAIRE_STOCK':3},
             'DIAMOND':  {'ADMIN':4, 'CAISSIER':6, 'GESTIONNAIRE_STOCK':6},
         }
     
     CHILD_ADMIN_LIMITS = {
-        'ADMIN': {'ADMIN': 0, 'CAISSIER': 1, 'GESTIONNAIRE_STOCK': 1},
-        'CAISSIER': {'ADMIN': 0, 'CAISSIER': 0, 'GESTIONNAIRE_STOCK': 0},
-        'GESTIONNAIRE_STOCK': {'ADMIN': 0, 'CAISSIER': 0, 'GESTIONNAIRE_STOCK': 0},
+        'ADMIN': {'ADMIN': 0, 'CAISSIER': 3, 'GESTIONNAIRE_STOCK': 3},
     }
 
 
@@ -157,7 +164,7 @@ class UserCreateView(generics.CreateAPIView):
                                 status=status.HTTP_403_FORBIDDEN)
             if not parent.is_superuser:
                 try:
-                    parent_sub =Subscription.objects.get(user=current_user)
+                    parent_sub =Subscription.objects.get(user=parent)
                     if parent_sub.is_expired():
                         return Response({'detail':"L'abonnement de votre créateur a expiré."},
                                         status=status.HTTP_403_FORBIDDEN)
@@ -239,6 +246,36 @@ class UsersCreatedByMeView(generics.ListAPIView):
 
     def get_queryset(self):
         return User.objects.filter(created_by=self.request.user, is_deleted = False)
+    
+class UserCreatedByView(generics.ListAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user_id = self.request.query_params.get('user_id')
+
+        if not user_id:
+            return User.objects.none()
+
+        user_id = int(user_id)
+
+        # Enfants directs
+        direct_children = User.objects.filter(created_by=user_id, is_deleted=False)
+
+        # Récursif
+        def get_descendants(parents):
+            all_desc = []
+            for p in parents:
+                children = User.objects.filter(created_by=p.id, is_deleted=False)
+                all_desc.extend(children)
+                all_desc.extend(get_descendants(children))
+            return all_desc
+
+        all_descendants = get_descendants(direct_children)
+
+        return list(direct_children) + all_descendants
+
+
     
 class TrashedUsersListView(generics.ListAPIView):
     serializer_class = UserSerializer
@@ -465,7 +502,7 @@ class CreateCategoryView(generics.CreateAPIView):
                 serializer.save(user_created=user)
         else:
             serializer.save(user_created=user)
-            
+
 class DeleteCategorieView(generics.DestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategoryViewSerializer
@@ -747,39 +784,31 @@ class DeleleInvoice(RetrieveDestroyAPIView):
 
 
 
-class InvoiceView(generics.ListAPIView):        
+class InvoiceView(generics.ListAPIView):
     serializer_class = InvoicesViewSerializer   
     permission_classes = [IsAuthenticated]
-   
+
     def get_queryset(self):
         user = self.request.user
-        User = get_user_model()
-        # Récupérer l'utilisateur et ses enfants
-        child_users = User.objects.filter(created_by=user).values_list('id', flat=True)
         only_children = self.request.query_params.get('only_children') == 'true'
-        all_user_ids = list(child_users) if only_children else list(child_users) + [user.id]
+
+        if only_children:
+            all_user_ids = list(User.objects.filter(created_by=user, is_deleted=False).values_list('id', flat=True))
+        else:
+            # admin + tous ses descendants
+            all_user_ids = [user.id] + self.get_all_descendants_ids(user)
 
         queryset = Invoice.objects.filter(cashier__in=all_user_ids).select_related(
             'cashier', 'cashier__userprofile', 'cashier__created_by', 'cashier__created_by__userprofile'
         ).prefetch_related('items')
 
-
-        queryset = queryset.annotate(
-            profit_amount = Sum(
-              ExpressionWrapper(
-                (F('items__price') - F('items__purchase_price')) * F('items__quantity'),
-                output_field=FloatField()
-              )
-            )
-        )
-
+        # filtrer par cashier spécifique
         cashier_id = self.request.query_params.get('cashier')
-
         if cashier_id:
             queryset = queryset.filter(cashier=cashier_id)
 
+        # filtrer par date
         date_str = self.request.query_params.get('created_at')
- 
         if date_str:
             try:
                 date = timezone.make_aware(datetime.strptime(date_str, '%Y-%m-%d'))
@@ -788,7 +817,24 @@ class InvoiceView(generics.ListAPIView):
                 queryset = queryset.filter(created_at__range=(start_of_day, end_of_day))
             except ValueError:
                 print('Invalid date format provided', date_str)
+
         return queryset
+    def get_all_descendants_ids(self,user):
+        """
+        Retourne une liste de tous les descendants (enfants, petits-enfants, etc.) de l'utilisateur
+        """
+        User = get_user_model()
+        descendants = []
+        queue = [user.id]
+
+        while queue:
+            parent_id = queue.pop(0)
+            children = list(User.objects.filter(created_by=parent_id, is_deleted=False).values_list('id', flat=True))
+            descendants.extend(children)
+            queue.extend(children)
+
+        return descendants
+    
 
 class InvoiceDetailView(generics.ListAPIView):
     serializer_class =  InvoiceItemSerializer
