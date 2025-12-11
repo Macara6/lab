@@ -243,10 +243,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return invoice
 
 class InvoicesViewSerializer(serializers.ModelSerializer):
-    profit_amount = serializers.FloatField(read_only=True)
+   
     items = InvoiceItemSerializer(many=True, read_only=True)
     cashier_currency = serializers.SerializerMethodField()
     cashier_name = serializers.CharField(source='cashier.username', read_only=True)
+    profit_amount = serializers.SerializerMethodField() 
 
     class Meta:
         model = Invoice
@@ -267,7 +268,7 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
         ]
 
     def get_cashier_currency(self, obj):
-        # 1️⃣ Vérifie si le caissier a un profil
+        # 1️Vérifie si le caissier a un profil
         cashier_profile = getattr(obj.cashier, 'userprofile', None)
         if cashier_profile and getattr(cashier_profile, 'currency_preference', None):
             return cashier_profile.currency_preference
@@ -277,9 +278,22 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
         parent_profile = getattr(parent, 'userprofile', None) if parent else None
         if parent_profile and getattr(parent_profile, 'currency_preference', None):
             return parent_profile.currency_preference
-
-        # 3️⃣ Si rien n’existe
         return 'N/A'
+    
+    def get_profit_amount(self, obj):
+        
+        total_profit = 0
+
+        for item in obj.items.all():
+
+            cost_price = getattr(item,"purchase_price",0)
+            sale_price = getattr(item,"price",0)
+            qty =getattr(item,"quantity",0)
+
+            total_profit += qty * (sale_price - cost_price)
+        
+        return round(total_profit,2)
+
 
 
 

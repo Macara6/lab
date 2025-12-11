@@ -262,21 +262,42 @@ class UserCreatedByView(generics.ListAPIView):
         # Enfants directs
         direct_children = User.objects.filter(created_by=user_id, is_deleted=False)
 
-        # Récursif
-        def get_descendants(parents):
-            all_desc = []
-            for p in parents:
-                children = User.objects.filter(created_by=p.id, is_deleted=False)
-                all_desc.extend(children)
-                all_desc.extend(get_descendants(children))
-            return all_desc
+        return list(direct_children) 
 
-        all_descendants = get_descendants(direct_children)
+class UserTreeView(APIView):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
 
-        return list(direct_children) + all_descendants
+    def get(self, request):
+        base_user_id = request.query_params.get('base_user_id')
 
+        if not base_user_id:
+            return Response({"error": "base_user_id required"}, status=400)
 
+        try:
+            base_user_id = int(base_user_id)
+        except:
+            return Response({"error": "invalid base_user_id"}, status=400)
+
+        ids = self.get_all_user_ids_for_chart(base_user_id)
+
+        return Response({"user_ids": ids})
     
+    def get_all_user_ids_for_chart(self,base_user_id):
+            
+            User = get_user_model()
+            descendant_ids = []
+            queue = [base_user_id]
+
+            while queue:
+                parent_id = queue.pop(0)
+                children = list(User.objects.filter(created_by=parent_id, is_deleted=False)
+                                .values_list('id', flat=True))
+                descendant_ids.extend(children)
+                queue.extend(children)
+
+            return [base_user_id] + descendant_ids
+
 class TrashedUsersListView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
@@ -834,7 +855,58 @@ class InvoiceView(generics.ListAPIView):
             queue.extend(children)
 
         return descendants
+
+class InvoiceChartView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = InvoicesViewSerializer   
+    def get(self, request):
+        base_user_id = request.query_params.get("base_user_id")
+        date_str = request.query_params.get("date")  # optionnel
+
+        if not base_user_id:
+            return Response({"error": "base_user_id required"}, status=400)
+
+        try:
+            base_user_id = int(base_user_id)
+        except ValueError:
+            return Response({"error": "invalid base_user_id"}, status=400)
+
+        # Récupérer tous les IDs descendants
+        user_ids = self.get_all_descendants_ids(base_user_id)
+
+        # Filtrer les factures
+        invoices = Invoice.objects.filter(cashier__in=user_ids, status="VALIDE")
+        if date_str:
+            try:
+                date = timezone.make_aware(datetime.strptime(date_str, "%Y-%m-%d"))
+                start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_of_day = date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                invoices = invoices.filter(created_at__range=(start_of_day, end_of_day))
+            except ValueError:
+                pass
+
+        # Optionnel : calculer total par caissier
+        totals = {}
+        for inv in invoices:
+            cashier_id = inv.cashier.id
+            totals[cashier_id] = totals.get(cashier_id, 0) + float(inv.total_amount)
+
+        return Response({"totals_by_cashier": totals})
     
+
+    def get_all_descendants_ids(self, base_user_id):
+        User = get_user_model()
+        descendant_ids = []
+        queue = [base_user_id]
+
+        while queue:
+            parent_id = queue.pop(0)
+            children = list(User.objects.filter(created_by=parent_id, is_deleted=False).values_list("id", flat=True))
+            descendant_ids.extend(children)
+            queue.extend(children)
+
+        return [base_user_id] + descendant_ids
+
 
 class InvoiceDetailView(generics.ListAPIView):
     serializer_class =  InvoiceItemSerializer
@@ -1029,6 +1101,54 @@ class ListSubscriptionView(generics.ListAPIView):
         queryset = Subscription.objects.all()
         serializer_class = SubscriptionSerialize
 
+
+class CashoutForAllUserView(generics.ListAPIView):
+  serializer_class = CashOutSerializer
+  permission_classes = [IsAuthenticated]
+
+  def get_queryset(self):
+      user = self.request.user
+      only_children = self.request.query_params.get('only_children') == 'true'
+      
+      if only_children:
+          all_user_ids = list(User.objects.filter(created_by=user, is_deleted=False).values_list('id', flat=True))
+      else:
+          all_user_ids = [user.id] + self.get_all_descendants_ids(user)
+      
+      queryset = CashOut.objects.filter(user__in=all_user_ids).select_related(
+          'user','user__userprofile', 'user__created_by', 'user__created_by__userprofile'
+      ).prefetch_related()
+
+      user_id = self.request.query_params.get('user')
+      if user_id:
+          queryset = queryset.filter(user=user_id)
+
+      date_str = self.request.query_params.get('created_at')
+
+      if date_str:
+          try:
+                date = timezone.make_aware(datetime.strptime(date_str, '%Y-%m-%d'))
+                start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_of_day = date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                queryset = queryset.filter(created_at__range=(start_of_day, end_of_day))              
+          except ValueError:
+                print('Invalid date format provided', date_str)
+      return queryset
+  
+  def get_all_descendants_ids(self, user):
+      
+      User = get_user_model()
+      descendants = []
+      queue = [user.id]
+      
+      while queue:
+          parent_id = queue.pop(0)
+          children = list(User.objects.filter(created_by= parent_id, is_deleted=False).values_list('id', flat=True))
+          descendants.extend(children)
+          queue.extend(children)
+      return descendants
+     
+
 class CashOutView(generics.ListAPIView):
         serializer_class = CashOutSerializer
         permission_classes = [IsAuthenticated]
@@ -1069,6 +1189,55 @@ class CreateEntryNoteView(generics.CreateAPIView):
     queryset = EntryNote.objects.all()
     serializer_class = EnteryNoteCreateSerializer
     permission_classes = [IsAuthenticated]  
+
+
+class EntryNoteAllUserView(generics.ListAPIView):
+    serializer_class = EntryNoteSerialize
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        only_chidren = self.request.query_params.get('only_children') == 'true'
+        if only_chidren:
+            all_user_ids = list(User.objects.filter(created_by=user, is_deleted=False).values_list('id', flat=True))
+        else:
+            all_user_ids = [user.id] + self.get_all_descendants_ids(user)
+        
+        queryset = EntryNote.objects.filter(user__in=all_user_ids).select_related(
+            'user','user__userprofile','user__created_by','user__created_by__userprofile'
+        ).prefetch_related()
+
+        user_id = self.request.query_params.get('user')
+
+        if user_id:
+            queryset = queryset.filter(user=user_id)
+
+        date_str = self.request.query_params.get('created_at')
+
+        if date_str :
+            try:
+                date = timezone.make_aware(datetime.strptime(date_str, '%Y-%m-%d'))
+                start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_of_day = date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                queryset = queryset.filter(created_at__range=(start_of_day, end_of_day))  
+            except ValueError:
+                print('Invalid date format provided', date_str)
+        return queryset
+    
+    def get_all_descendants_ids(self, user):
+        User = get_user_model()
+        descendants = []
+        queue = [user.id]
+        
+        while queue:
+            parent_id = queue.pop(0)
+            children = list(User.objects.filter(created_by = parent_id, is_deleted=False).values_list('id', flat=True))
+            descendants.extend(children)
+            queue.extend(children)
+        return descendants
+       
+
 
 class EntryNoteViewList(generics.ListAPIView):
     serializer_class = EntryNoteSerialize

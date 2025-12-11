@@ -21,6 +21,7 @@ urlpatterns = [
 
     path('invoices/', CreateInvoiceView.as_view(), name='create-invoice'),
     path('invoicesView/', InvoiceView.as_view(), name='invoices-views' ),
+    path('invoice-chart/', InvoiceChartView.as_view(), name='invoice_fort_chart'),
     path('invoices/delete/<int:id>/', DeleleInvoice.as_view(), name='delete-invoice'),
     path('invoices/history/', UserSalesHistoryView.as_view(), name='user-sales-history'),
     path('invoice/detail/', InvoiceDetailView.as_view(), name='invoice_detail'),
@@ -38,6 +39,7 @@ urlpatterns = [
     path('userCreate/', UserCreateView.as_view(), name='user-create'),
     path('users/created-by-me/', UsersCreatedByMeView.as_view(), name='users-created-by-me'),
     path('users-created-by/',UserCreatedByView.as_view(), name='utilisateur'),
+    path('user-for-chart/', UserTreeView.as_view(),name='user-tree' ),
     path('userUpdateView/<int:user__id>/',UpdatUserVieuw.as_view, name='user-update' ),
     path('usersView/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('user/delete/<int:id>/',DeleteUserView.as_view(), name='delete-user'),
@@ -73,6 +75,7 @@ urlpatterns = [
     path('userProfil/create/',CreateProfilView.as_view(), name='create-profile'),
 
     #route pour la careation, vision et suppression du bon de sortie
+    path('cashouts-all-users/',CashoutForAllUserView.as_view(), name='cashout-for-users'),
     path('cashouts/', CashOutView.as_view(), name='cashout-list'),
     path('cashoutDetail/', CashOutDetailView.as_view(), name='cashout-detail'),
     path('cashout/create/', CreateCashOutView.as_view(), name='create-cashout'),
@@ -80,6 +83,7 @@ urlpatterns = [
     #fin de routage
 
     #routage pour la creation du bon d'entré
+    path('EntryNotes-all-users/',EntryNoteAllUserView.as_view(), name='entry_note_all_user'),
     path("entryNote/create/",CreateEntryNoteView .as_view(), name="create-entryNote"),
     path('entryNote/',EntryNoteViewList.as_view(),name='Entry_note-list'),
     path('entryNote/detail/', EntryDetailView.as_view(), name= 'entryNote-detail'),
