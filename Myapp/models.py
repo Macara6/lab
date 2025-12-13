@@ -214,9 +214,9 @@ class Invoice(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     change = models.DecimalField(max_digits=10, decimal_places=2)
-    cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    cashier = models.ForeignKey(settings.AUTH_USER_MODEL,db_index=True, on_delete=models.CASCADE)
     tva = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  
-    created_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now=True, db_index=True)
     status  = models.CharField(max_length=10, choices=STATUS_CHOICES, default='VALIDE')
 
     def __str__(self):
@@ -266,7 +266,7 @@ class Subscription(models.Model):
         (DIAMOND, 'Diamond'),
     ]
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_index=True)
     subscription_type = models.CharField(max_length=10, choices=SUBSCRIPTION_TYPES, default=BASIC)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     start_date = models.DateTimeField(auto_now=True)
@@ -285,8 +285,8 @@ class Subscription(models.Model):
 
 
 class CashOut(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_index=True)
+    created_at = models.DateTimeField(auto_now=True, db_index=True)
     motif = models.CharField(max_length=30, default="Aucun motif")
 
     def __str__(self):
@@ -305,8 +305,8 @@ class CashOutDetail(models.Model):
         return f"{self.reason} - {self.amount}"
 
 class EntryNote(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_index=True)
+    created_at = models.DateTimeField(auto_now=True, db_index=True)
     supplier_name = models.CharField(max_length=30)
 
     def __str__(self):

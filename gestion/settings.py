@@ -32,7 +32,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-cr+nt5y*e83_0+6&xopwjgvc9pi2ul&dys(q74o9uu=syp5q8h'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+
+
+DEBUG = False   #mode production
 
 ALLOWED_HOSTS = ['*']
 
@@ -67,11 +69,13 @@ INSTALLED_APPS = [
     'Myapp',
     'rest_framework',
     'corsheaders',
-    'silk',
+  
 ]
 
+
+
 MIDDLEWARE = [
-    'silk.middleware.SilkyMiddleware',
+    'django.middleware.gzip.GZipMiddleware',  # 🔥
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -83,12 +87,19 @@ MIDDLEWARE = [
     
 ]
 
+
+if DEBUG:
+    INSTALLED_APPS += ['silk']
+    MIDDLEWARE = ['silk.middleware.SilkyMiddleware'] + MIDDLEWARE
+
 CORS_ALLOWED_ORIGINS = [
                "https://bilatech.org",
                "https://www.bilatech.org",
                # Adjust this to match your Vue.js app's URL
        ]
-CORS_ALLOW_ALL_ORIGINS = True
+
+
+CORS_ALLOW_ALL_ORIGINS = False  #mode production 
 
 
 
@@ -162,6 +173,7 @@ sentry_sdk.init(
 #  data base in django
 
 '''
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -182,8 +194,15 @@ DATABASES = {
         'PASSWORD':'BilaTech@25',
         'HOST': 'localhost',
         'PORT': '3306',
+        'CONN_MAX_AGE': 600,
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
+
+
 
 
 
