@@ -75,8 +75,8 @@ INSTALLED_APPS = [
 
 
 MIDDLEWARE = [
-    'django.middleware.gzip.GZipMiddleware',  # 🔥
     'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.gzip.GZipMiddleware',  # 🔥
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -93,8 +93,9 @@ if DEBUG:
     MIDDLEWARE = ['silk.middleware.SilkyMiddleware'] + MIDDLEWARE
 
 CORS_ALLOWED_ORIGINS = [
-               "https://bilatech.org",
-               "https://www.bilatech.org",
+            "http://localhost:5173",
+            "https//bilasol.bilatech.org",
+            "https//bilatech.vercel.app",
                # Adjust this to match your Vue.js app's URL
        ]
 
@@ -105,7 +106,7 @@ CORS_ALLOW_ALL_ORIGINS = False  #mode production
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
-    "https://bilatech.vercel.app/",
+    "https://bilatech.vercel.app",
 ]
 
 
