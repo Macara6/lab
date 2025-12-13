@@ -665,7 +665,6 @@ class ProductListView(generics.ListAPIView):
 
         querey_filter = Q()
 
-
         if user_created_param and user_created_param.isdigit():
             target_user_id = int(user_created_param)
             
@@ -845,16 +844,24 @@ class InvoiceView(generics.ListAPIView):
         Retourne une liste de tous les descendants (enfants, petits-enfants, etc.) de l'utilisateur
         """
         User = get_user_model()
+
+        all_users = User.objects.filter(is_deleted=False).values('id','created_by')
+        children_map = {}
+        for u in all_users:
+            parent_id = u['created_by']
+            children_map.setdefault(parent_id, []).append(u['id'])
+
         descendants = []
         queue = [user.id]
 
         while queue:
             parent_id = queue.pop(0)
-            children = list(User.objects.filter(created_by=parent_id, is_deleted=False).values_list('id', flat=True))
+            children = children_map.get(parent_id,[])
             descendants.extend(children)
             queue.extend(children)
 
         return descendants
+    
 
 class InvoiceChartView(APIView):
     permission_classes = [IsAuthenticated]
