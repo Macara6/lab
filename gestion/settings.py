@@ -94,8 +94,8 @@ if DEBUG:
 
 CORS_ALLOWED_ORIGINS = [
             "http://localhost:5173",
-            "https//bilasol.bilatech.org",
-            "https//bilatech.vercel.app",
+            "https://bilasol.bilatech.org",
+            "https://bilatech.vercel.app",
                # Adjust this to match your Vue.js app's URL
        ]
 
