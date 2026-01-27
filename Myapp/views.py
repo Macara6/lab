@@ -46,7 +46,7 @@ def index(request):
 
 # view pour la mise à jour l'application 
 class CheckAppUpdateView(APIView):
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
     
     def get(self, request):
         file_path = os.path.join(
