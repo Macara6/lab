@@ -2,13 +2,13 @@
 venv/
 
 # Python bytecode
-fulldb.json
-
 *.pyc
 __pycache__/
 
-# Fichiers SQLite
+# Base de données
 db.sqlite3
+fulldb.json
 
+# APK
 *.apk
 media/app/*.apk
