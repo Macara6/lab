@@ -9,3 +9,6 @@ __pycache__/
 
 # Fichiers SQLite
 db.sqlite3
+
+*.apk
+media/app/*.apk
