@@ -20,7 +20,7 @@ from django.db.models import F, Sum, ExpressionWrapper, FloatField
 from django.utils.timezone import now
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.generics import UpdateAPIView
 
 from datetime import datetime, timedelta
@@ -29,6 +29,9 @@ from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
+from django.conf import settings
+import os 
+import json
 from .models import *
 
 
@@ -40,6 +43,29 @@ def index(request):
     template = loader.get_template("base.html")
     return HttpResponse(template.render({}, request))
 
+
+# view pour la mise à jour l'application 
+class CheckAppUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        file_path = os.path.join(
+            settings.MEDIA_ROOT,
+            'app',
+            'version.json'
+        )
+    
+        if not os.path.exists(file_path):
+            return Response(
+                {"detail":"Aucune mise à jour disponible"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        with open(file_path, 'r', encoding='utf-8') as f :
+            data = json.load(f)
+        return Response(data, status=status.HTTP_200_OK)
+    
+
+# fonction pour le mise à jour de token 
 class CustomTokenRefreshView(TokenRefreshView):
     permission_classes = [IsAuthenticated]
     
@@ -53,6 +79,8 @@ class CustomTokenRefreshView(TokenRefreshView):
             'token': new_token
         }, status= status.HTTP_200_OK)
     
+
+ # view pour la connexion    
 class LoginView(APIView):
     def post(self, request):
         username = request.data.get('username')
@@ -66,7 +94,7 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # 2️⃣ Superuser → accès direct
+        # 2️ Superuser → accès direct
         if user.is_superuser:
             token = RefreshToken.for_user(user)
             return Response({
@@ -689,7 +717,7 @@ class ProductListView(generics.ListAPIView):
                 return Product.objects.none()
             
         # Par défaut : rien
-        return Product.objects.filter(querey_filter).select_related('user_created')
+        return Product.objects.filter(querey_filter).select_related('user_created').order_by('-created_at')
        
     
 
@@ -941,18 +969,31 @@ class CancelInvoiceView(APIView):
         return Response(
             {"message": "Facture annulée et stock restauré."},
             status=status.HTTP_200_OK
+ 
         )
+    
+class SalesOffsetPagination(LimitOffsetPagination):
+    default_limit = 50
+    max_limit = 100
 #API  pour l'historique de vente pour l'application  flutter 
 class UserSalesHistoryView(generics.ListAPIView):
     serializer_class = InvoicesViewSerializer
+    pagination_class = SalesOffsetPagination
     def get_queryset(self):
-        queryset = Invoice.objects.all()
         cashier_id = self.request.query_params.get('cashier')
-        if cashier_id:
-            queryset = queryset.filter(cashier= cashier_id).order_by('-created_at')
-            
-            return queryset 
-        return Invoice.objects.none()
+        if not cashier_id:
+            return Invoice.objects.none()
+    
+        return (
+            Invoice.objects
+            .filter(cashier=cashier_id)
+            .select_related('cashier')
+            .prefetch_related('items')
+            .order_by('-created_at')
+        )
+    
+    
+    
 #fin de l'API
 class CreateProfilView(generics.CreateAPIView):
     queryset = UserProfile.objects.all()
@@ -1275,6 +1316,6 @@ class DeleteEntryNote(RetrieveDestroyAPIView):
     permission_classes = [IsAuthenticated]
     lookup_field ='id'  
 
-   
+
 
     

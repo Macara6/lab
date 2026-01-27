@@ -2,6 +2,8 @@
 venv/
 
 # Python bytecode
+fulldb.json
+
 *.pyc
 __pycache__/
 

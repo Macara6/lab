@@ -5,7 +5,14 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 User = get_user_model() 
 from .models import *
+from rest_framework.pagination import CursorPagination
 
+
+
+class SalesCursorPagination(CursorPagination):
+    page_size = 20
+    ordering = '-created_at'
+    
 
 class UserSerializer(serializers.ModelSerializer):
    
@@ -273,7 +280,7 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
         if cashier_profile and getattr(cashier_profile, 'currency_preference', None):
             return cashier_profile.currency_preference
 
-        # 2️⃣ Sinon fallback sur le profil du parent
+        # 2Sinon fallback sur le profil du parent
         parent = getattr(obj.cashier, 'created_by', None)
         parent_profile = getattr(parent, 'userprofile', None) if parent else None
         if parent_profile and getattr(parent_profile, 'currency_preference', None):
@@ -281,7 +288,7 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
         return 'N/A'
     
     def get_profit_amount(self, obj):
-        
+
         total_profit = 0
 
         for item in obj.items.all():
@@ -291,7 +298,7 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
             qty =getattr(item,"quantity",0)
 
             total_profit += qty * (sale_price - cost_price)
-        
+
         return round(total_profit,2)
 
 

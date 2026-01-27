@@ -88,9 +88,9 @@ MIDDLEWARE = [
 ]
 
 
-if DEBUG:
-    INSTALLED_APPS += ['silk']
-    MIDDLEWARE = ['silk.middleware.SilkyMiddleware'] + MIDDLEWARE
+#if DEBUG:
+   # INSTALLED_APPS += ['silk']
+   # MIDDLEWARE = ['silk.middleware.SilkyMiddleware'] + MIDDLEWARE
 
 CORS_ALLOWED_ORIGINS = [
             "http://localhost:5173",
@@ -100,7 +100,7 @@ CORS_ALLOWED_ORIGINS = [
        ]
 
 
-CORS_ALLOW_ALL_ORIGINS = False  #mode production 
+CORS_ALLOW_ALL_ORIGINS = True  #mode production 
 
 
 
@@ -128,23 +128,33 @@ TEMPLATES = [
     },
 ]
 
+
 WSGI_APPLICATION = 'gestion.wsgi.application'
+
+
 
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        # Other authentication classes can be added here
     ),
-        # Améliore les performances sur les gros volumes
+
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 50, 
-    
+    'PAGE_SIZE': 50,
+
+    #  FIX ICI
+    'DEFAULT_FILTER_BACKENDS': [
+        'rest_framework.filters.OrderingFilter',
+    ],
+
+    #  ordering par défaut CORRECT
+    'DEFAULT_ORDERING': ['-created_at'],
+
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
-    )
- 
+    ),
 }
+
 
 
 
@@ -173,8 +183,8 @@ sentry_sdk.init(
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 #  data base in django
 
-'''
 
+'''
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -182,7 +192,9 @@ DATABASES = {
     }
 }
 
+
 '''
+
 
 
 
@@ -204,19 +216,35 @@ DATABASES = {
 }
 
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "IGNORE_EXCEPTIONS": True,  # safe prod
+
+if not DEBUG:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": "redis://127.0.0.1:6379/1",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "IGNORE_EXCEPTIONS": True,
+            }
         }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
 
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-SESSION_CACHE_ALIAS = "default"
+
+
+if DEBUG:
+    # DEV : sessions en base de données
+    SESSION_ENGINE = "django.contrib.sessions.backends.db"
+else:
+    # PROD : sessions en cache (Redis)
+    SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+    SESSION_CACHE_ALIAS = "default"
+
 
 
 
@@ -263,6 +291,8 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
+MEDIA_URL ='/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 STATIC_URL = 'static/'
 

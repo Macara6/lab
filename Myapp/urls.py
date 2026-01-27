@@ -5,6 +5,8 @@ from django.views.decorators.cache import cache_page
 
 urlpatterns = [
     path('',views.index, name='index'),
+    # route pour la mise à jour de l'application 
+    path('app/update/', CheckAppUpdateView.as_view(), name="app_update"),
     path('login/',LoginView.as_view(), name='login'),
     #route pour le produit pour le stock
     path('products/',(ProductListView.as_view())),
@@ -23,7 +25,7 @@ urlpatterns = [
     path('invoicesView/', InvoiceView.as_view(), name='invoices-views' ),
     path('invoice-chart/', InvoiceChartView.as_view(), name='invoice_fort_chart'),
     path('invoices/delete/<int:id>/', DeleleInvoice.as_view(), name='delete-invoice'),
-    path('invoices/history/', UserSalesHistoryView.as_view(), name='user-sales-history'),
+    path('invoices/history/',UserSalesHistoryView.as_view(), name='user-sales-history'),
     path('invoice/detail/', InvoiceDetailView.as_view(), name='invoice_detail'),
     path('invoice/cancel/<int:invoice_id>/', CancelInvoiceView.as_view(), name='cancel_invoice'),
     path('usersView/', UserView.as_view(), name='user-list'),
@@ -90,5 +92,7 @@ urlpatterns = [
     path('entryNote/delete/<int:id>/', DeleteEntryNote.as_view(),name='entryNode-delete'),
     #fin de routage pour le entry note
     path('test-sentry/', test_sentry),
+
+    
     
 ]
