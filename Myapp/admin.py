@@ -6,6 +6,7 @@ from .models import *
 
 
 admin.site.register(CustomUser, UserAdmin)
+admin.site.register(Customer)
 admin.site.register(Category)
 admin.site.register(Product)
 admin.site.register(StockHistory)

@@ -38,6 +38,8 @@ urlpatterns = [
     #fin  
     
     #route pour l'utilisateur
+    path('register/', RegisterAccountView.as_view(), name='register-account'),
+
     path('userCreate/', UserCreateView.as_view(), name='user-create'),
     path('users/created-by-me/', UsersCreatedByMeView.as_view(), name='users-created-by-me'),
     path('users-created-by/',UserCreatedByView.as_view(), name='utilisateur'),
@@ -49,6 +51,11 @@ urlpatterns = [
     path("users/delete-permanent/<int:id>/", PermanentDeleteUserView.as_view(), name="delete-user-permanent"),
     path("users/trashed/", TrashedUsersListView.as_view(), name="trashed-users"),
     path('user/update/', UpdateUserApiView.as_view(), name='update-user'),
+
+    # route pour le gestion du client 
+    path("customer/created/",CreateCustomer.as_view(), name="create_customer"),
+    path("customer/listView/", CustomerView.as_view(), name='customer_list'),
+    path('customer/<int:customer_id>/loyalty-card/',generate_loyalty_card_pdf),
 
     #route pour le mot de passe 
     path('password-reset-request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
@@ -75,6 +82,7 @@ urlpatterns = [
     path('userProfil/', UserProfilView.as_view(), name='user_profil'),
     path('userProfil/update/', UserProfilUpdateView.as_view(), name='user_profil_update'),
     path('userProfil/create/',CreateProfilView.as_view(), name='create-profile'),
+    path('userProfil/toggle/<int:pk>/',TogglePoints.as_view()),
 
     #route pour la careation, vision et suppression du bon de sortie
     path('cashouts-all-users/',CashoutForAllUserView.as_view(), name='cashout-for-users'),

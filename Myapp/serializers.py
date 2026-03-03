@@ -40,6 +40,45 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
+class CustomerSerializer(serializers.ModelSerializer):
+    total_value_points =  serializers.SerializerMethodField()
+    class Meta:
+        model = Customer
+        fields = [
+            'id',
+            'name',
+            'last_name',
+            'sexe',
+            'phone_number',
+            'balance_point',
+            'created_at',
+            'created_by',
+            'total_value_points',
+            'loyalty_card_number'
+            ]
+        #fonction pour calculer la valeur des points a la sortie 
+    def get_total_value_points(self, obj):
+        if not obj.created_by:
+            return Decimal("0.00")
+        
+        profile = None
+        user = obj.created_by
+        try:
+            profile = user.userprofile
+        except:
+            pass
+        if not profile and user.created_by:
+            try:
+               profile = user.created_by.userprofile
+            except:
+                pass
+        if not profile:
+            return Decimal("0.00")
+        
+        value = obj.balance_point * profile.point_output
+        return value.quantize(Decimal("0.01"))
+        
+
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -190,6 +229,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     cashier_name = serializers.CharField(source='user.username', read_only=True)
     cashier_currency = serializers.SerializerMethodField()
     tva = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True) 
+
     class Meta:
         model =  Invoice
         fields = [
@@ -202,7 +242,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'cashier_name',
             'cashier_currency', 
             'items',
-            'profit_amount'
+            'customer',
+            'points_used',
+            'points_discount',
+            'profit_amount',
         ]
     
     def get_profit_amount(self,obj):
@@ -246,6 +289,15 @@ class InvoiceSerializer(serializers.ModelSerializer):
             InvoiceItem.objects.create(invoice=invoice, **item_data)
             product.stock -= quantity
             product.save()
+        
+        customer = invoice.customer
+        if customer:
+            if customer.balance_point < invoice.points_used:
+                raise serializers.ValidationError(
+                    "Points insuffisants"
+                )
+            customer.balance_point -= invoice.points_used
+            invoice.add_loyalty_points()
 
         return invoice
 
@@ -311,6 +363,7 @@ class UserProfilViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = [
+            'id',
             'user',
             'user_name',
             'entrep_name',
@@ -319,8 +372,11 @@ class UserProfilViewSerializer(serializers.ModelSerializer):
             'rccm_number',
             'impot_number',
             'id_nat',
+            'type_of_activity',
             'currency_preference',
-
+            'point_entry',
+            'point_output',
+            'point_is_activate'
         ]
 
 class SubscriptionSerialize(serializers.ModelSerializer):

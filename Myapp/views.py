@@ -9,7 +9,8 @@ from rest_framework.views import APIView
 from rest_framework import generics, permissions
 from django.contrib.auth import authenticate
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated,AllowAny
+
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
@@ -23,6 +24,9 @@ from django.utils.decorators import method_decorator
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.generics import UpdateAPIView
 
+from .pdf_utils import build_loyalty_card_pdf
+from rest_framework.decorators import api_view, permission_classes
+
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.core.mail import send_mail
@@ -33,6 +37,10 @@ from django.conf import settings
 import os 
 import json
 from .models import *
+from django.db import IntegrityError, transaction
+
+
+
 
 
 def test_sentry(request):
@@ -43,10 +51,25 @@ def index(request):
     template = loader.get_template("base.html")
     return HttpResponse(template.render({}, request))
 
+@api_view(['GET'])
+def generate_loyalty_card_pdf(request, customer_id):
+    customer = get_object_or_404(Customer, id = customer_id)
+    profile = getattr(customer.created_by, 'userprofile', None)
+
+    pdf = build_loyalty_card_pdf(customer,profile)
+    response = HttpResponse(
+        pdf,
+        content_type ='application/pdf'
+    )
+
+    response['Content-Disposition'] = f'attachment; filename="carte_fidelite_{customer.id}.pdf"'
+    return response
+
+
 
 # view pour la mise à jour l'application 
 class CheckAppUpdateView(APIView):
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         file_path = os.path.join(
@@ -86,7 +109,7 @@ class LoginView(APIView):
         username = request.data.get('username')
         password = request.data.get('password')
 
-        # 1️⃣ Authentification
+        # Authentification
         user = authenticate(request, username=username, password=password)
         if not user or user.is_deleted:
             return Response(
@@ -146,6 +169,93 @@ class LoginView(APIView):
                 pass
             parent = parent.created_by
         return None, None
+
+#API pour register
+
+class RegisterAccountView(generics.CreateAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+
+        PLAN_PRICES = {
+        'BASIC' : 10,
+        'MEDIUM': 19,
+        'PREMIUM': 30,
+        'PLATINUM': 40,
+        'DIAMOND': 50,
+         }
+
+
+        if data.get("password") != data.get("confirmPassword"):
+            return Response(
+               {"detail": "Les mots de passe ne correspondent pas"},
+               status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        plan = data.get("plan", "BASIC").upper()
+
+        if plan not in dict(Subscription.SUBSCRIPTION_TYPES):
+            return Response(
+                {"detail":"Type d'adonnement invalide"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if User.objects.filter(username = data.get("username")).exists():
+            return Response(
+                {"detail":"Ce nom d'utilisateur existe déjà"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if User.objects.filter(email = data.get("email")).exists():
+            return Response(
+                {"detail":"Cet email est déjà utilisé"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if UserProfile.objects.filter(phone_number = data.get("store_phone")).exists():
+            return Response(
+                {"detail":"Ce numéro de téléphone est déjà utilisé"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        user = User.objects.create(
+                username = data.get('username'),
+                email = data.get('email'),
+                first_name = data.get('first_name'),
+                last_name = data.get('last_name'),
+                password = make_password(data.get('password')),
+                status = "ADMIN",
+                is_register = True
+            )
+
+        userProfil = UserProfile.objects.create(
+                entrep_name = data.get("store_name"),
+                adress = data.get("store_adress"),
+                phone_number = data.get("store_phone"),
+                currency_preference = data.get("currency"),
+                type_of_activity = data.get("business_type"),
+                user = user
+            )
+        start_date = timezone.now()
+        end_date = start_date + timedelta(days=10)
+
+        subscription = Subscription.objects.create(
+                user= user,
+                subscription_type = plan,
+                amount = PLAN_PRICES[plan],
+                start_date = start_date,
+                end_date = end_date,
+            )
+
+
+        return Response({
+                "message": "Compte créer avec succèss",
+                "triale_ends_at": end_date,
+                "subscription": subscription.subscription_type
+            }, status=status.HTTP_201_CREATED)
+        
+  
+         
+
 
 
 
@@ -273,6 +383,12 @@ class UsersCreatedByMeView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser:
+            return User.objects.filter(
+              Q(created_by = user) | Q(is_register = True),
+              is_deleted = False
+            )
         return User.objects.filter(created_by=self.request.user, is_deleted = False)
     
 class UserCreatedByView(generics.ListAPIView):
@@ -420,6 +536,49 @@ class PermanentDeleteUserView(APIView):
         
         user.delete()
         return Response({"message": "Utilisateur supprimé définitivement."}, status=200)
+
+
+#object pour crée un nouveau client
+
+class CreateCustomer(generics.CreateAPIView):
+    queryset = Customer.objects.all()
+    serializer_class = CustomerSerializer
+    permission_classes = [IsAuthenticated]
+
+# afficher les clients 
+class CustomerView(generics.ListAPIView):
+    serializer_class = CustomerSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Customer.objects.none()
+        user_created_param = self.request.query_params.get('created_by',None)
+
+        querey_filter = Q()
+        
+        if user_created_param and user_created_param.isdigit():
+            target_user_id = int(user_created_param)
+            target_user = User.objects.filter(pk=target_user_id).only('id','status','created_by').first()
+
+            if target_user:
+                if target_user.status == User.ADMIN:
+                    querey_filter = Q(created_by_id=target_user.id)
+                elif target_user.status in [User.CAISSIER, User.GESTIONNAIRE_STOCK] and target_user.created_by_id:
+                    querey_filter = Q(created_by_id = target_user.created_by)
+                else:
+                    return Customer.objects.none()
+            else:
+                return Customer.objects.none()
+        else:
+            if user.status == User.ADMIN:
+                querey_filter = Q(created_by_id = user.id)
+            elif user.status in [User.CAISSIER, User.GESTIONNAIRE_STOCK] and user.created_by:
+                querey_filter = Q(created_by = user.created_by_id)
+            else:
+                return Customer.objects.none()
+        return Customer.objects.filter(querey_filter).select_related("created_by").order_by('-created_at')
 
 #fonction pour changer le mot de passe 
 class ChangePasswordView(generics.UpdateAPIView):
@@ -673,9 +832,6 @@ class ProductCreateView(generics.CreateAPIView):
                 serializer.save(user_created=user)
         else:
             serializer.save(user_created=user)
-
-
-
 
 
 
@@ -999,6 +1155,23 @@ class CreateProfilView(generics.CreateAPIView):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfilViewSerializer
     permission_classes = [IsAuthenticated]
+
+
+#active la gestion des points 
+class TogglePoints(APIView):
+    
+    def post(self, request, pk):
+        profil = get_object_or_404(UserProfile, pk=pk)
+        with transaction.atomic():
+            profil.point_is_activate = not profil.point_is_activate
+            profil.save()
+        
+        return Response({
+            "id": profil.id,
+            "point_is_activate":profil.point_is_activate
+        })
+
+
 
 class CreateSubsriptionView(generics.CreateAPIView):
     queryset = Subscription.objects.all()

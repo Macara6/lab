@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 import uuid
 from django.utils import timezone
 from django.db import models
@@ -31,12 +32,47 @@ class CustomUser(AbstractUser):
     )
 
     is_deleted = models.BooleanField(default=False)
+    is_register = models.BooleanField(default=False)
+    
     deleted_at = models.DateTimeField(null=True, blank=True)
     permanent_delete_at = models.DateTimeField(null=True, blank=True) 
 
     def __str__(self):
         return f"{self.username} ({self.status})"
 
+#classe client 
+class Customer(models.Model):
+    SEXE_TYPE = (
+        ("M","Homme"),
+        ("F","Femme")
+    )
+    name = models.CharField(max_length=20)
+    last_name = models.CharField(max_length=20)
+    sexe = models.CharField(max_length=9, choices=SEXE_TYPE, blank=True, null=True)
+    phone_number = models.CharField(max_length=20,unique=True)
+    email = models.EmailField(max_length=40, blank=True, null=True)
+    balance_point = models.DecimalField(max_digits=12,decimal_places=2, default=Decimal("0.00"))
+    created_at  = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL)
+
+    loyalty_card_number = models.CharField(max_length=6, unique = True, null=True, blank=True )
+    
+    def __str__(self):
+        return f"{self.name} - {self.balance_point}"
+    
+
+    
+    def save(self, *args, **kwargs):
+        if not self.loyalty_card_number:
+            self.loyalty_card_number = generate_unique_loyalty_number()
+        super().save(*args, **kwargs)
+
+def generate_unique_loyalty_number():
+        while True:
+            number = str(random.randint(100000, 999999))
+            if not Customer.objects.filter(loyalty_card_number = number).exists():
+                return number    
+    
 class PasswordResetToken(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     token = models.CharField(max_length=10)
@@ -62,10 +98,16 @@ class UserProfile(models.Model):
     entrep_name = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=15, blank=True, null=True)
     adress = models.CharField(max_length=40, null=True, blank=True)
-    rccm_number = models.CharField(max_length=40)
-    impot_number = models.CharField(max_length=255)
+    rccm_number = models.CharField(max_length=40, null=True, blank=True)
+    impot_number = models.CharField(max_length=255 , null=True,blank=True)
     id_nat=models.CharField(max_length=23, null=True, default='N/A')
+    type_of_activity = models.CharField(max_length=30, null=True, blank=True)
     currency_preference = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='CDF')
+
+    point_entry = models.DecimalField(max_digits=10, decimal_places=2, default=1000)
+    point_output = models.DecimalField(max_digits=10, decimal_places=2, default=10)
+    point_is_activate = models.BooleanField(default=False)
+
 
 
 class SecretAccessKey(models.Model):
@@ -219,6 +261,11 @@ class Invoice(models.Model):
     created_at = models.DateTimeField(auto_now=True, db_index=True)
     status  = models.CharField(max_length=10, choices=STATUS_CHOICES, default='VALIDE')
 
+    customer = models.ForeignKey(Customer,blank=True, null=True, on_delete=models.SET_NULL)
+    points_used = models.PositiveBigIntegerField(default=0)
+    points_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+
     def __str__(self):
         created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
         return f"Invoice {self.id} - {self.client_name} - {created_at}"
@@ -235,6 +282,43 @@ class Invoice(models.Model):
         
         self.status = 'ANNULER'
         self.save()
+    #fonction pour le points
+    def add_loyalty_points(self):
+        """
+        Ajoute les points au client si activé
+        """
+        if not self.customer:
+            return
+        user = self.cashier
+        profile = None
+
+        try:
+            profile = user.userprofile
+        except:
+            pass
+        
+        if not profile and user.created_by:
+            try:
+               profile = user.created_by.userprofile
+            except:
+                pass
+        if not profile:
+            return
+        
+        if not profile.point_is_activate:
+            return
+        if profile.point_entry <= 0:
+            return
+        net_amount = self.total_amount - self.points_discount
+        if net_amount < 0:
+            net_amount = 0
+
+        points = net_amount / profile.point_entry
+        points = points.quantize(Decimal("1"))
+        print('point gagné :', points)
+        self.customer.balance_point += points
+        self.customer.save()
+
 
 
 
@@ -269,7 +353,7 @@ class Subscription(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_index=True)
     subscription_type = models.CharField(max_length=10, choices=SUBSCRIPTION_TYPES, default=BASIC)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    start_date = models.DateTimeField(auto_now=True)
+    start_date = models.DateTimeField(default=timezone.now)
     end_date = models.DateTimeField()
     is_active = models.BooleanField(default=True)
 
