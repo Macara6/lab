@@ -369,9 +369,17 @@ class Subscription(models.Model):
 
 
 class CashOut(models.Model):
+    
+    CURRENCY_CHOICES = [
+        ('CDF', 'Franc Congolais'),
+        ('USD', 'Dollar Américain'),
+    ]
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_index=True)
     created_at = models.DateTimeField(auto_now=True, db_index=True)
     motif = models.CharField(max_length=30, default="Aucun motif")
+
+    currency = models.CharField(max_length=5,choices=CURRENCY_CHOICES, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
@@ -389,10 +397,15 @@ class CashOutDetail(models.Model):
         return f"{self.reason} - {self.amount}"
 
 class EntryNote(models.Model):
+    CURRENCY_CHOICES = [
+        ('CDF', 'Franc Congolais'),
+        ('USD', 'Dollar Américain'),
+    ]
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_index=True)
     created_at = models.DateTimeField(auto_now=True, db_index=True)
     supplier_name = models.CharField(max_length=30)
-
+    currency = models.CharField(max_length=4, choices=CURRENCY_CHOICES, null=True, blank=True)
     def __str__(self):
         return f"{self.supplier_name} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
 

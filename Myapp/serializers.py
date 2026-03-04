@@ -402,7 +402,7 @@ class CashOutDetailSerializer(serializers.ModelSerializer):
 class CashOutSerializer(serializers.ModelSerializer): 
     class Meta:
         model = CashOut
-        fields =['id','user','created_at','motif','total_amount']
+        fields =['id','user','created_at','motif','currency','total_amount']
  
 
 class CashOutDatailCreateSerializer(serializers.ModelSerializer):
@@ -421,6 +421,7 @@ class UserCashOutSerializer(serializers.ModelSerializer):
         fields = ['id', 'username']        
 
 class CashOutCreateSerializer(serializers.ModelSerializer):
+
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), write_only=True, source='user'
     )
@@ -431,7 +432,7 @@ class CashOutCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CashOut
-        fields = ['user_id', 'motif', 'total_amount', 'details', 'detail_inputs']
+        fields = ['user_id', 'motif','currency','total_amount', 'details', 'detail_inputs']
     
     def get_details(self, obj):
         return CashOutDetailReadSerializer(obj.details.all(), many=True).data
@@ -449,7 +450,7 @@ class EntryNoteSerialize(serializers.ModelSerializer):
 
     class Meta:
         model = EntryNote
-        fields =['id','user','supplier_name','created_at','total_amount']
+        fields =['id','user','supplier_name','currency','created_at','total_amount']
 
 class EnteryNoteDetailCreateSerializer(serializers.ModelSerializer):
 
@@ -472,7 +473,7 @@ class EnteryNoteCreateSerializer(serializers.ModelSerializer):
 
         class Meta:
             model = EntryNote
-            fields = ['user_id','supplier_name','created_at','total_amount','details','detail_inputs']
+            fields = ['user_id','supplier_name','currency','created_at','total_amount','details','detail_inputs']
 
         def get_details(self, obj):
                 return EnteryNoteDetailReadSerializer(obj.details.all(),many=True).data
