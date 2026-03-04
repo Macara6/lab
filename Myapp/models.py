@@ -105,7 +105,7 @@ class UserProfile(models.Model):
     currency_preference = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='CDF')
 
     point_entry = models.DecimalField(max_digits=10, decimal_places=2, default=1000)
-    point_output = models.DecimalField(max_digits=10, decimal_places=2, default=10)
+    point_output = models.DecimalField(max_digits=10, decimal_places=2, default=50)
     point_is_activate = models.BooleanField(default=False)
 
 

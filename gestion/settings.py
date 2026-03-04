@@ -183,7 +183,7 @@ sentry_sdk.init(
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 #  data base in django
 
-'''
+
 
 DATABASES = {
     'default': {
@@ -215,7 +215,7 @@ DATABASES = {
     }
 }
 
-
+'''
 
 if not DEBUG:
     CACHES = {
