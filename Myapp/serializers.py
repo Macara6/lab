@@ -220,7 +220,7 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     class Meta:
         model = InvoiceItem
-        fields = ['product','product_name','quantity', 'price','purchase_price']             
+        fields = ['product','product_name','quantity', 'price','purchase_price','is_gift']             
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -251,8 +251,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def get_profit_amount(self,obj):
         profit =0
         for item in obj.items.all():
-            
-            profit += (item.price - item.purchase_price) * item.quantity
+            if not item.is_gift:
+               profit += (item.price - item.purchase_price) * item.quantity
         return profit
     
     def get_cashier_currency(self, obje):
@@ -265,11 +265,16 @@ class InvoiceSerializer(serializers.ModelSerializer):
         items_data = validated_data.pop('items')
 
         # Calcul du total et de la TVA
-        total = sum(item["price"] * item["quantity"] for item in items_data)
+        total = sum(
+            item["price"] * item["quantity"]
+            for item in items_data
+            if not item.get("is_gift", False)
+            )
         tva = sum(
             (item["price"] * item["quantity"]) * Decimal("0.16")
             for item in items_data
-            if item["product"].tva
+            if item["product"].tva and not item.get("is_gift", False)
+
         )
 
         validated_data["tva"] = tva
@@ -279,13 +284,17 @@ class InvoiceSerializer(serializers.ModelSerializer):
         for item_data in items_data:
             product = item_data['product']
             quantity = item_data['quantity']
+            is_gift = item_data.get('is_gift', False)
 
             if product.stock < quantity:
                 raise serializers.ValidationError(
                     f"Stock insuffisant pour le produit '{product.name}' "
                     f"(stock: {product.stock}, demandé: {quantity})"
                 )
-
+            if is_gift:
+                item_data['price'] = 0
+                item_data['purchase_price'] = product.purchase_price
+                
             InvoiceItem.objects.create(invoice=invoice, **item_data)
             product.stock -= quantity
             product.save()
@@ -459,7 +468,7 @@ class EnteryNoteDetailCreateSerializer(serializers.ModelSerializer):
             fields = ['reason','amount']
 
 class EnteryNoteDetailReadSerializer(serializers.ModelSerializer):
-        
+     
         class Meta:
             model = EntryNoteDetail
             fields = ['id','reason','amount']

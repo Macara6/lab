@@ -328,6 +328,8 @@ class InvoiceItem(models.Model):
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    is_gift = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.product.name} x{self.quantity}"
