@@ -106,8 +106,10 @@ class UserProfile(models.Model):
 
     point_entry = models.DecimalField(max_digits=10, decimal_places=2, default=1000)
     point_output = models.DecimalField(max_digits=10, decimal_places=2, default=50)
+
     point_is_activate = models.BooleanField(default=False)
 
+    exchange_rate = models.DecimalField(max_digits=10,decimal_places=2, default=2300)
 
 
 class SecretAccessKey(models.Model):
@@ -264,12 +266,22 @@ class Invoice(models.Model):
     customer = models.ForeignKey(Customer,blank=True, null=True, on_delete=models.SET_NULL)
     points_used = models.PositiveBigIntegerField(default=0)
     points_discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
+    invoice_number = models.CharField(max_length=20, null=True, blank=True)
 
+    
 
     def __str__(self):
         created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
         return f"Invoice {self.id} - {self.client_name} - {created_at}"
     
+    def save(self,*args, **kwargs):
+        if not self.invoice_number:
+           now = timezone.now()
+           self.invoice_number = now.strftime("#%Y%S")
+        super().save(*args, **kwargs)
+
+
     def cancel(self):
 
         if self.status == 'ANNULER':
@@ -328,7 +340,7 @@ class InvoiceItem(models.Model):
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2)
-    
+
     is_gift = models.BooleanField(default=False)
 
     def __str__(self):

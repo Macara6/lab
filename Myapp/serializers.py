@@ -243,6 +243,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'cashier_currency', 
             'items',
             'customer',
+            'invoice_number',
             'points_used',
             'points_discount',
             'profit_amount',
@@ -332,7 +333,9 @@ class InvoicesViewSerializer(serializers.ModelSerializer):
             'created_at',
             'profit_amount',
             'status',
+            'customer',
             'items',
+            'invoice_number'
         ]
 
     def get_cashier_currency(self, obj):
@@ -385,7 +388,8 @@ class UserProfilViewSerializer(serializers.ModelSerializer):
             'currency_preference',
             'point_entry',
             'point_output',
-            'point_is_activate'
+            'point_is_activate',
+            'exchange_rate'
         ]
 
 class SubscriptionSerialize(serializers.ModelSerializer):
