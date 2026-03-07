@@ -275,10 +275,18 @@ class Invoice(models.Model):
         created_at = self.created_at.strftime('%Y-%m-%d %H:%M')
         return f"Invoice {self.id} - {self.client_name} - {created_at}"
     
-    def save(self,*args, **kwargs):
+    def save(self, *args, **kwargs):
         if not self.invoice_number:
-           now = timezone.now()
-           self.invoice_number = now.strftime("#%Y%S")
+            now = timezone.now()
+
+            year = now.strftime("%Y")
+            time_part = now.strftime("%H%M%S")
+
+            month_letter = now.strftime("%B")[0].upper()   # première lettre du mois
+            day_letter = now.strftime("%A")[0].upper()     # première lettre du jour
+
+            self.invoice_number = f"{year}{month_letter}{day_letter}{time_part}"
+
         super().save(*args, **kwargs)
 
 
