@@ -32,6 +32,7 @@ class CustomUser(AbstractUser):
     )
 
     is_deleted = models.BooleanField(default=False)
+
     is_register = models.BooleanField(default=False)
     
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -378,6 +379,8 @@ class Subscription(models.Model):
     start_date = models.DateTimeField(default=timezone.now)
     end_date = models.DateTimeField()
     is_active = models.BooleanField(default=True)
+    is_free_frial = models.BooleanField(default=False)
+
 
     def __str__(self):
         return f"subscription for {self.user.username} - Active: {self.is_active}"
@@ -388,6 +391,24 @@ class Subscription(models.Model):
     def deactivate_subscription(self):
         self.is_active = False
         self.save()
+
+# object pour le payment
+
+class Payment(models.Model):
+    TYPE_CHOICES = [
+        ("PAYMENT","Payment"),
+        ("WITHDRAW","Withdraw")
+    ]
+     
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    transaction_reference = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    provider = models.CharField(max_length=20)
+    phone = models.CharField(max_length=20)
+    transaction_type = models.CharField(max_length=20,choices=TYPE_CHOICES, null=True, blank=True)
+    status = models.CharField(max_length=20, default="PENDING")
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class CashOut(models.Model):

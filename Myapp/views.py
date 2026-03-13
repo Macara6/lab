@@ -235,6 +235,7 @@ class RegisterAccountView(generics.CreateAPIView):
                 type_of_activity = data.get("business_type"),
                 user = user
             )
+        
         start_date = timezone.now()
         end_date = start_date + timedelta(days=10)
 
@@ -244,6 +245,7 @@ class RegisterAccountView(generics.CreateAPIView):
                 amount = PLAN_PRICES[plan],
                 start_date = start_date,
                 end_date = end_date,
+                is_free_frial = True
             )
 
 
@@ -253,12 +255,6 @@ class RegisterAccountView(generics.CreateAPIView):
                 "subscription": subscription.subscription_type
             }, status=status.HTTP_201_CREATED)
         
-  
-         
-
-
-
-
 class UserCreateView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -1219,6 +1215,7 @@ class UpdateSubscriptionView(generics.UpdateAPIView):
             subscription.is_active =True
             subscription.save()
 
+#API pour la reactivation de l'abonnement 
 class ReactivateSubscriptionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     
@@ -1229,6 +1226,7 @@ class ReactivateSubscriptionView(APIView):
             if subscription.end_date < timezone.now():
                 subscription.end_date = timezone.now() + timedelta(days=30)
                 subscription.is_active = True
+                subscription.is_free_frial = False
                 subscription.save()
         
                 #envoi sms
@@ -1255,7 +1253,27 @@ class ReactivateSubscriptionView(APIView):
             return Response({"detail": "L'abonnement est encore actif."}, status=status.HTTP_400_BAD_REQUEST)
         except Subscription.DoesNotExist:
             return Response({"detail": "Abonnement introuvable."}, status=status.HTTP_404_NOT_FOUND)
+    
+class SubscriptionByEmailView(APIView):
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        email = request.data.get("email")
+        try:
+            user = User.objects.get(email=email)
+            subscription = Subscription.objects.get(user=user)
 
+            return Response({
+                "subscription_type": subscription.subscription_type,
+                "amount": subscription.amount,
+                "end_date": subscription.end_date
+            })
+        
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Utilisateur non trouvé"},
+                status=404
+            )
 
 class PasswordResetRequestView(APIView):
     permission_classes = []
@@ -1489,6 +1507,123 @@ class DeleteEntryNote(RetrieveDestroyAPIView):
     permission_classes = [IsAuthenticated]
     lookup_field ='id'  
 
+#API pour voir les payment
+class PayementView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PaymentSerialize
+
+    def get_queryset(self):
+        queryset = Payment.objects.all().order_by('-created_at')
+        return queryset
 
 
+# maishaPay
+import requests
+class MaishaPayPayment(APIView):
+
+    def post(self, request):
+
+        phone = request.data.get("phone")
+        amount = request.data.get("amount")
+        provider = request.data.get("provider")
+        email = request.data.get("email")
+
+        reference = str(uuid.uuid4())
+        try:
+            client = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error":"Utilisateur intouvable"}, status=404)
+        
+        # Paiement carte
+        if provider == "visa":
+
+            payload = {
+                "gatewayMode": 0,
+                "publicApiKey": settings.MAISHAPAY_PUBLIC_KEY,
+                "secretApiKey": settings.MAISHAPAY_SECRET_KEY,
+
+                "transactionReference": reference,
+                "amount": amount,
+                "currency": "USD",
+
+                "customerFullName": f"{client.username} {client.first_name}",
+               
+                "chanel": "CARD",
+                "provider": "VISA",
+                "callbackUrl": "http://127.0.0.1:8000/maishapay/webhook/"
+            }
+
+        else:
+
+            payload = {
+                "gatewayMode": 0,
+                "publicApiKey": settings.MAISHAPAY_PUBLIC_KEY,
+                "secretApiKey": settings.MAISHAPAY_SECRET_KEY,
+                "transactionReference": reference,
+                "amount": amount,
+                "currency": "USD",
+
+                "customerFullName": f"{client.username} {client.first_name}",
+                "customerPhoneNumber": phone,
+
+                "chanel": "MOBILEMONEY",
+
+                "provider": provider.upper(),
+
+                "walletID": phone,
+                "callbackUrl": "https://pos.bilatech.org/maishapay/webhook/"
+            }
+        headers = {
+            "Content-Type": "application/json"
+        }
+        response = requests.post(
+            "https://marchand.maishapay.online/api/payment/rest/vers1.0/merchant",
+            json=payload,
+            headers=headers
+        )
     
+
+        try:
+           data = response.json()
+           
+        except ValueError:
+            return Response({
+                "error": "Réponse API invalide",
+                "status_code": response.status_code,
+                "response": response.text
+            })
+        print("data: ", data)
+
+        if data.get("status") ==200:
+            Payment.objects.create(
+                user = client,
+                transaction_reference = reference,
+                amount=amount,
+                provider=provider,
+                phone=phone if phone else "", 
+                transaction_type="PAYMENT",
+                status="PENDING"
+            )
+        return Response(data)
+    
+class MaishaPayCallback(APIView):
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+
+        status = request.GET.get("status")
+        transaction_ref = request.GET.get("transactionRefId")
+        try:
+            payment = Payment.objects.get(transaction_reference=transaction_ref)
+            if status =="202":
+                payment.status ="SUCCESS"
+            else:
+                payment.status ="FAILED"
+            
+            payment.save()
+        except Payment.DoesNotExist:
+            pass
+
+        return Response({"message":"transaction mise à jour"})

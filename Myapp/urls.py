@@ -77,6 +77,7 @@ urlpatterns = [
     path('subscription/reactivate/<int:user_id>/', ReactivateSubscriptionView.as_view(), name='reactivate-subscription'),
     path('subscription/user/<int:user_id>/',SubscriptionByUserAndChildUserView.as_view(), name='subscription-user'),
     path('subscription/status/',SubsriptionStatusView.as_view(), name="subscription_status"),
+    path("subscription-by-email/", SubscriptionByEmailView.as_view()),
     
     #route pour le profile
     path('userProfil/', UserProfilView.as_view(), name='user_profil'),
@@ -100,6 +101,11 @@ urlpatterns = [
     path('entryNote/delete/<int:id>/', DeleteEntryNote.as_view(),name='entryNode-delete'),
     #fin de routage pour le entry note
     path('test-sentry/', test_sentry),
+
+    # toute payment
+    path("pay/", MaishaPayPayment.as_view()),
+    path("pay/list/",PayementView.as_view()),
+    path("maishapay/webhook/",MaishaPayCallback.as_view()),
 
     
     

@@ -401,7 +401,8 @@ class SubscriptionSerialize(serializers.ModelSerializer):
             'amount',
             'start_date',
             'end_date',
-            'is_active'
+            'is_active',
+            'is_free_frial'
         ]
 
 
@@ -545,4 +546,22 @@ class SecretAccessKeySerializer(serializers.Serializer):
             user = user,
             hashed_key = make_password(new_key)
         )
-    
+
+# serializer pour le payment
+class PaymentSerialize(serializers.ModelSerializer):
+    client_name = serializers.SerializerMethodField()
+    class Meta:
+        model = Payment
+        fields = [
+            'id',
+            'user',
+            'client_name',
+            'transaction_reference',
+            'amount',
+            'provider',
+            'phone',
+            'status',
+            'created_at'
+        ]
+    def get_client_name(self, obj):
+        return f"{obj.user.username} {obj.user.first_name}"

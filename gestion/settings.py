@@ -45,6 +45,11 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+#key maishapay
+MAISHAPAY_PUBLIC_KEY ="MP-SBPK-IbGZIQv7IUjIXWhvWPe8Qu6yE2Ze30xzlGnsFwQlS6$11sx$YgUh6TeLn0xOS$O$/Lk1lmgy2$sj10hTJW6YHT6L01dR92l31$jlnP64IqELglBBaJNoFOq2"
+MAISHAPAY_SECRET_KEY ="MP-SBSK-o01eMrU2S91Dh.5$bH.2w$IC0Q1uiyQcow8141LL4NWKedZIv4ODSZG0keR4fT2W9.ssz$y0JtnochBxlJitnB/63.7$1z8LKuAQBCh3k1B/s8TbrdEb$$oy"
+
 #reglage  gamil pour envoiyer le email
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 #EMAIL_BACKEND = 'Myapp.email_backend.UnsafeEmailBackend'
@@ -211,7 +216,6 @@ DATABASES = {
         },
     }
 }
-
 
 
 
