@@ -254,6 +254,7 @@ class RegisterAccountView(generics.CreateAPIView):
                 "triale_ends_at": end_date,
                 "subscription": subscription.subscription_type
             }, status=status.HTTP_201_CREATED)
+    
         
 class UserCreateView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -1536,53 +1537,58 @@ class MaishaPayPayment(APIView):
         
         # Paiement carte
         if provider == "visa":
+            maisha_data = {
+                    "transactionReference" : reference,
+                    "gatewayMode" : 1,  
+                    "publicApiKey" : settings.MAISHAPAY_PUBLIC_KEY,
+                    "secretApiKey" : settings.MAISHAPAY_SECRET_KEY, 
+                    "order" : {
+                        "amount" : amount,  
+                        "currency" : "USD",
+                        "customerFullName" : f"{client.username} {client.first_name}", 
+                        "customerEmailAdress" : email
+                    },
 
-            payload = {
-                "gatewayMode": 0,
-                "publicApiKey": settings.MAISHAPAY_PUBLIC_KEY,
-                "secretApiKey": settings.MAISHAPAY_SECRET_KEY,
-
-                "transactionReference": reference,
-                "amount": amount,
-                "currency": "USD",
-
-                "customerFullName": f"{client.username} {client.first_name}",
-               
-                "chanel": "CARD",
-                "provider": "VISA",
-                "callbackUrl": "http://127.0.0.1:8000/maishapay/webhook/"
-            }
+                    "paymentChannel" : {
+                        "channel" : "VISA",  
+                        "provider" : provider.upper(), 
+                        "walletID" : phone,
+                        "callbackUrl" : "https://pos.bilatech.org/maishapay/webhook/"
+                    }   
+                }
 
         else:
 
-            payload = {
-                "gatewayMode": 0,
-                "publicApiKey": settings.MAISHAPAY_PUBLIC_KEY,
-                "secretApiKey": settings.MAISHAPAY_SECRET_KEY,
-                "transactionReference": reference,
-                "amount": amount,
-                "currency": "USD",
+            maisha_data = {
+                    "transactionReference" : reference,
+                    "gatewayMode" : 1,  
+                    "publicApiKey" : settings.MAISHAPAY_PUBLIC_KEY,
+                    "secretApiKey" : settings.MAISHAPAY_SECRET_KEY, 
+                    "order" : {
+                        "amount" : amount,  
+                        "currency" : "USD",
+                        "customerFullName" : f"{client.username} {client.first_name}", 
+                        "customerEmailAdress" : email
+                    },
 
-                "customerFullName": f"{client.username} {client.first_name}",
-                "customerPhoneNumber": phone,
+                    "paymentChannel" : {
+                        "channel" : "MOBILEMONEY",  
+                        "provider" : provider.upper(), 
+                        "walletID" : phone,
+                        "callbackUrl" : "https://pos.bilatech.org/maishapay/webhook/"
+                    }   
+                }
 
-                "chanel": "MOBILEMONEY",
-
-                "provider": provider.upper(),
-
-                "walletID": phone,
-                "callbackUrl": "https://pos.bilatech.org/maishapay/webhook/"
-            }
         headers = {
             "Content-Type": "application/json"
         }
+
         response = requests.post(
-            "https://marchand.maishapay.online/api/payment/rest/vers1.0/merchant",
-            json=payload,
+            "https://marchand.maishapay.online/api/collect/v2/store/mobileMoney",
+            json=maisha_data,
             headers=headers
         )
     
-
         try:
            data = response.json()
            
@@ -1592,9 +1598,10 @@ class MaishaPayPayment(APIView):
                 "status_code": response.status_code,
                 "response": response.text
             })
+        
         print("data: ", data)
 
-        if data.get("status") ==200:
+        if data.get("status_code") ==200:
             Payment.objects.create(
                 user = client,
                 transaction_reference = reference,
@@ -1611,13 +1618,13 @@ class MaishaPayCallback(APIView):
     authentication_classes = []
     permission_classes = []
 
-    def get(self, request):
+    def post(self, request):
 
         status = request.GET.get("status")
         transaction_ref = request.GET.get("transactionRefId")
         try:
             payment = Payment.objects.get(transaction_reference=transaction_ref)
-            if status =="202":
+            if status =="200":
                 payment.status ="SUCCESS"
             else:
                 payment.status ="FAILED"
