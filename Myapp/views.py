@@ -138,10 +138,10 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # 4️⃣ Générer le token JWT
+        # 4 Générer le token JWT
         token = RefreshToken.for_user(user)
 
-        # 5️⃣ Retourner les infos de l’utilisateur
+        # 5Retourner les infos de l’utilisateur
         return Response({
             'id': user.id,
             'username': user.username,
@@ -1523,94 +1523,74 @@ import requests
 class MaishaPayPayment(APIView):
 
     def post(self, request):
-
         phone = request.data.get("phone")
         amount = request.data.get("amount")
-        provider = request.data.get("provider")
+        provider = request.data.get("provider")   # visa, mpesa, airtel…
         email = request.data.get("email")
 
         reference = str(uuid.uuid4())
+
         try:
             client = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({"error":"Utilisateur intouvable"}, status=404)
-        
-        # Paiement carte
-        if provider == "visa":
-            maisha_data = {
-                    "transactionReference" : reference,
-                    "gatewayMode" : 1,  
-                    "publicApiKey" : settings.MAISHAPAY_PUBLIC_KEY,
-                    "secretApiKey" : settings.MAISHAPAY_SECRET_KEY, 
-                    "order" : {
-                        "amount" : amount,  
-                        "currency" : "USD",
-                        "customerFullName" : f"{client.username} {client.first_name}", 
-                        "customerEmailAdress" : email
-                    },
+            return Response({"error": "Utilisateur introuvable"}, status=404)
 
-                    "paymentChannel" : {
-                        "channel" : "VISA",  
-                        "provider" : provider.upper(), 
-                        "walletID" : phone,
-                        "callbackUrl" : "https://pos.bilatech.org/maishapay/webhook/"
-                    }   
-                }
-
-        else:
-
-            maisha_data = {
-                    "transactionReference" : reference,
-                    "gatewayMode" : 1,  
-                    "publicApiKey" : settings.MAISHAPAY_PUBLIC_KEY,
-                    "secretApiKey" : settings.MAISHAPAY_SECRET_KEY, 
-                    "order" : {
-                        "amount" : amount,  
-                        "currency" : "USD",
-                        "customerFullName" : f"{client.username} {client.first_name}", 
-                        "customerEmailAdress" : email
-                    },
-
-                    "paymentChannel" : {
-                        "channel" : "MOBILEMONEY",  
-                        "provider" : provider.upper(), 
-                        "walletID" : phone,
-                        "callbackUrl" : "https://pos.bilatech.org/maishapay/webhook/"
-                    }   
-                }
-
-        headers = {
-            "Content-Type": "application/json"
+        # 🔹 Structure commune
+        maisha_data = {
+            "transactionReference": reference,
+            "gatewayMode": 1,
+            "publicApiKey": settings.MAISHAPAY_PUBLIC_KEY,
+            "secretApiKey": settings.MAISHAPAY_SECRET_KEY,
+            "order": {
+                "amount": amount,
+                "currency": "USD",
+                "customerFullName": f"{client.username} {client.first_name}",
+                "customerEmailAdress": email
+            },
         }
 
-        response = requests.post(
-            "https://marchand.maishapay.online/api/collect/v2/store/mobileMoney",
-            json=maisha_data,
-            headers=headers
-        )
-    
-        try:
-           data = response.json()
-           
-        except ValueError:
-            return Response({
-                "error": "Réponse API invalide",
-                "status_code": response.status_code,
-                "response": response.text
-            })
-        
-        print("data: ", data)
+        # 🔹 Paiement par carte VISA / MasterCard
+        if provider.lower() == "visa" or provider.lower() == "mastercard":
+            maisha_data["paymentChannel"] = {
+                "channel": "CARD",
+                "provider": provider.upper(),  # VISA / MASTERCARD
+                "callbackUrl": "https://pos.bilatech.org/maishapay/webhook/"
+            }
 
-        if data.get("status_code") ==200:
+            url = "https://marchand.maishapay.online/api/collect/v2/store/card"
+
+        else:
+            maisha_data["paymentChannel"] = {
+                "channel": "MOBILEMONEY",
+                "provider": provider.upper(),
+                "walletID": phone,
+                "callbackUrl": "https://pos.bilatech.org/maishapay/webhook/"
+            }
+
+            url = "https://marchand.maishapay.online/api/collect/v2/store/mobileMoney"
+
+        # Requête API
+        response = requests.post(url, json=maisha_data, headers={"Content-Type": "application/json"})
+
+        try:
+            data = response.json()
+        except:
+            return Response({"error": "Réponse API invalide", "raw": response.text})
+
+        print("data:", data)
+
+        # Vérification du succès
+        if str(data.get("status_code")) == "200":
             Payment.objects.create(
-                user = client,
-                transaction_reference = reference,
+                user=client,
+                transaction_reference=reference,
                 amount=amount,
                 provider=provider,
-                phone=phone if phone else "", 
+                phone=phone,
                 transaction_type="PAYMENT",
                 status="PENDING"
             )
+
         return Response(data)
     
 class MaishaPayCallback(APIView):
