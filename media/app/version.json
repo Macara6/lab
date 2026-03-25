@@ -1,7 +1,7 @@
 {
   "version_code": 3,
-  "version_name": "1.2.0",
-  "date": "24/03/2026",
+  "version_name": "1.2.1",
+  "date": "26/03/2026",
   "mandatory": true,
   "changelog": "Correction bugs + amélioration performances",
   "apk_url": "https://pos.bilatech.org/media/app/app-release.apk"

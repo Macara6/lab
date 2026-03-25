@@ -1528,6 +1528,20 @@ class MaishaPayPayment(APIView):
         provider = request.data.get("provider")   # visa, mpesa, airtel…
         email = request.data.get("email")
 
+        card_number = request.data.get('cardNumber')
+        card_name = request.data.get('cardName')
+        card_expiry = request.data.get('cardExpiry')
+        card_cvv = request.data.get('cardCvv')
+        
+
+        expiry_month =None
+        expir_year = None
+        
+        if card_expiry:
+            try:
+                expiry_month, expir_year = card_expiry.split("/")
+            except:
+                pass
         reference = str(uuid.uuid4())
 
         try:
@@ -1550,13 +1564,20 @@ class MaishaPayPayment(APIView):
         }
 
         # 🔹 Paiement par carte VISA / MasterCard
-        if provider.lower() == "visa" or provider.lower() == "mastercard":
+        if provider.lower() in ["visa", "mastercard"]:
+
             maisha_data["paymentChannel"] = {
                 "channel": "CARD",
                 "provider": provider.upper(),  # VISA / MASTERCARD
-                "callbackUrl": "https://pos.bilatech.org/maishapay/webhook/"
+                "callbackUrl": "https://pos.bilatech.org/maishapay/webhook/",
+                "card": {
+                    "cardNumber":card_number,
+                    "cardHolderName":card_name,
+                    "expiryMonth": expiry_month,
+                    "expiryYear":"20" + expir_year if expir_year else None,
+                    "cvv":card_cvv
+                }
             }
-
             url = "https://marchand.maishapay.online/api/collect/v2/store/card"
 
         else:
@@ -1580,7 +1601,7 @@ class MaishaPayPayment(APIView):
         print("data:", data)
 
         # Vérification du succès
-        if str(data.get("status_code")) == "200":
+        if data.get("status_code") == 200 and  data.get("transactionStatus") =='SUCCESS':
             Payment.objects.create(
                 user=client,
                 transaction_reference=reference,
@@ -1588,9 +1609,19 @@ class MaishaPayPayment(APIView):
                 provider=provider,
                 phone=phone,
                 transaction_type="PAYMENT",
-                status="PENDING"
+                status="SUCCESS"
             )
 
+        if data.get("status_code") == 202 and data.get("transactionStatus") =='PENDING':
+            Payment.objects.create(
+                user = client,
+                transaction_reference=reference,
+                amount=amount,
+                provider=provider,
+                phone=card_number,
+                transaction_type="PAYEMENT",
+                status="PANDING"
+            )
         return Response(data)
     
 class MaishaPayCallback(APIView):
