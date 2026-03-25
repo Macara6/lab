@@ -1552,7 +1552,7 @@ class MaishaPayPayment(APIView):
         # 🔹 Structure commune
         maisha_data = {
             "transactionReference": reference,
-            "gatewayMode": 1,
+            "gatewayMode": 0,
             "publicApiKey": settings.MAISHAPAY_PUBLIC_KEY,
             "secretApiKey": settings.MAISHAPAY_SECRET_KEY,
             "order": {
