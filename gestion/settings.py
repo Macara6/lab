@@ -34,7 +34,7 @@ SECRET_KEY = 'django-insecure-cr+nt5y*e83_0+6&xopwjgvc9pi2ul&dys(q74o9uu=syp5q8h
 # SECURITY WARNING: don't run with debug turned on in production!
 
 
-DEBUG = False   #mode production
+DEBUG = False   #mode  developpemnt
 
 ALLOWED_HOSTS = ['*']
 
@@ -200,7 +200,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 
 '''

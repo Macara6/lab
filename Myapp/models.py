@@ -36,10 +36,11 @@ class CustomUser(AbstractUser):
     is_register = models.BooleanField(default=False)
     
     deleted_at = models.DateTimeField(null=True, blank=True)
-    permanent_delete_at = models.DateTimeField(null=True, blank=True) 
+    permanent_delete_at = models.DateTimeField(null=True, blank=True)
+    custom_account_id = models.CharField(max_length=50,unique=True, null=tuple, blank=True)
 
     def __str__(self):
-        return f"{self.username} ({self.status})"
+        return f"{self.username} ({self.status}) {self.custom_account_id}"
 
 #classe client 
 class Customer(models.Model):
