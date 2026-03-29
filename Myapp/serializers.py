@@ -394,6 +394,7 @@ class UserProfilViewSerializer(serializers.ModelSerializer):
         ]
 
 class SubscriptionSerialize(serializers.ModelSerializer):
+    custom_account_id = serializers.CharField(source ="user.custom_account_id", read_only= True)
     class Meta:
         model = Subscription
         fields = [
@@ -403,7 +404,8 @@ class SubscriptionSerialize(serializers.ModelSerializer):
             'start_date',
             'end_date',
             'is_active',
-            'is_free_frial'
+            'is_free_frial',
+            'custom_account_id'
         ]
 
 
