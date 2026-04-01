@@ -1156,7 +1156,7 @@ class CreateProfilView(generics.CreateAPIView):
 
 #active la gestion des points 
 class TogglePoints(APIView):
-    
+
     def post(self, request, pk):
         profil = get_object_or_404(UserProfile, pk=pk)
         with transaction.atomic():
@@ -1520,6 +1520,7 @@ class PayementView(generics.ListAPIView):
 
 # maishaPay
 import requests
+
 class MaishaPayPayment(APIView):
 
     def post(self, request):
@@ -1555,32 +1556,32 @@ class MaishaPayPayment(APIView):
             "gatewayMode": 1,
             "publicApiKey": settings.MAISHAPAY_PUBLIC_KEY,
             "secretApiKey": settings.MAISHAPAY_SECRET_KEY,
+
             "order": {
                 "amount": amount,
                 "currency": "USD",
                 "customerFullName": f"{client.username} {client.first_name}",
+                "customerFirstname": "Joe",
+                "customerLastname": "Doe",
+                "customerAddress": "1 Crystal Palace",
+                "customerCity": "Kinshasa",
                 "customerEmailAdress": email
             },
         }
 
         # 🔹 Paiement par carte VISA / MasterCard
         if provider.lower() in ["visa", "mastercard"]:
-
             maisha_data["paymentChannel"] = {
+
                 "channel": "CARD",
-                "provider": provider.upper(),  # VISA / MASTERCARD
+                "provider": "VISA",  # VISA / MASTERCARD
                 "callbackUrl": "https://pos.bilatech.org/maishapay/webhook/",
-                "card": {
-                    "cardNumber":card_number,
-                    "cardHolderName":card_name,
-                    "expiryMonth": expiry_month,
-                    "expiryYear":"20" + expir_year if expir_year else None,
-                    "cvv":card_cvv
-                }
+
             }
-            url = "https://marchand.maishapay.online/api/collect/v2/store/card"
+            url = "https://marchand.maishapay.online/api/collect/v3/store/card"
 
         else:
+
             maisha_data["paymentChannel"] = {
                 "channel": "MOBILEMONEY",
                 "provider": provider.upper(),
@@ -1622,6 +1623,7 @@ class MaishaPayPayment(APIView):
                 transaction_type="PAYEMENT",
                 status="PANDING"
             )
+
         return Response(data)
     
 class MaishaPayCallback(APIView):
@@ -1629,7 +1631,7 @@ class MaishaPayCallback(APIView):
     authentication_classes = []
     permission_classes = []
 
-    def post(self, request):
+    def get(self, request):
 
         status = request.GET.get("status")
         transaction_ref = request.GET.get("transactionRefId")
