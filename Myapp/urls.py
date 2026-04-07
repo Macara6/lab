@@ -56,7 +56,7 @@ urlpatterns = [
     path("customer/created/",CreateCustomer.as_view(), name="create_customer"),
     path("customer/listView/", CustomerView.as_view(), name='customer_list'),
     path('customer/<int:customer_id>/loyalty-card/',generate_loyalty_card_pdf),
-
+    path("customer/delete/<int:id>/",DeleteCustomer.as_view()),
     #route pour le mot de passe 
     path('password-reset-request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
@@ -106,7 +106,5 @@ urlpatterns = [
     path("pay/", MaishaPayPayment.as_view()),
     path("pay/list/",PayementView.as_view()),
     path("maishapay/webhook/",MaishaPayCallback.as_view()),
-
-    
-    
+      
 ]

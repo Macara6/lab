@@ -43,6 +43,7 @@ from django.db import IntegrityError, transaction
 
 
 
+
 def test_sentry(request):
     division = 1 / 0  # provoque une erreur
     return HttpResponse("OK")
@@ -541,7 +542,12 @@ class CreateCustomer(generics.CreateAPIView):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated]
-
+#supprimer le client
+class DeleteCustomer(RetrieveDestroyAPIView):
+    queryset = Customer.objects.all()
+    serializer_class = CustomerSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field ='id'
 # afficher les clients 
 class CustomerView(generics.ListAPIView):
     serializer_class = CustomerSerializer
@@ -1226,6 +1232,7 @@ class ReactivateSubscriptionView(APIView):
 
             if subscription.end_date < timezone.now():
                 subscription.end_date = timezone.now() + timedelta(days=30)
+                subscription.start_date = timezone.now()
                 subscription.is_active = True
                 subscription.is_free_frial = False
                 subscription.save()
@@ -1550,10 +1557,14 @@ class MaishaPayPayment(APIView):
         except User.DoesNotExist:
             return Response({"error": "Utilisateur introuvable"}, status=404)
 
-        # 🔹 Structure commune
+        try:
+            subscription = Subscription.objects.get(user=client)
+        except Subscription.DoesNotExist:
+            return Response({"error": "Abonnement introuvable"}, status=404)
+        
         maisha_data = {
             "transactionReference": reference,
-            "gatewayMode": 1,
+            "gatewayMode": 0,
             "publicApiKey": settings.MAISHAPAY_PUBLIC_KEY,
             "secretApiKey": settings.MAISHAPAY_SECRET_KEY,
 
@@ -1561,10 +1572,6 @@ class MaishaPayPayment(APIView):
                 "amount": amount,
                 "currency": "USD",
                 "customerFullName": f"{client.username} {client.first_name}",
-                "customerFirstname": "Joe",
-                "customerLastname": "Doe",
-                "customerAddress": "1 Crystal Palace",
-                "customerCity": "Kinshasa",
                 "customerEmailAdress": email
             },
         }
@@ -1613,6 +1620,12 @@ class MaishaPayPayment(APIView):
                 status="SUCCESS"
             )
 
+            subscription.end_date = timezone.now() + timedelta(days=30)
+            subscription.start_date =timezone.now()
+            subscription.is_active=True
+            subscription.save()
+
+
         if data.get("status_code") == 202 and data.get("transactionStatus") =='PENDING':
             Payment.objects.create(
                 user = client,
@@ -1623,8 +1636,36 @@ class MaishaPayPayment(APIView):
                 transaction_type="PAYEMENT",
                 status="PANDING"
             )
+        
+        if client.email:
+            message = (
+                f"Bonjour {client.username},\n\n"
+                f"Votre paiement Bila-Sol a été effectué avec succès le {timezone.now().strftime('%d/%m/%Y à %H:%M')}.\n\n"
+                f" Montant : {amount} USD\n"
+                f" Motif   : Renouvellement d’abonnement\n"
+                f" Référence : {reference}\n\n"
+                f"Opérateur : {provider}\n\n"
+                f"Votre abonnement à été réactiver jusqu'au {subscription.end_date.strftime('%d/%m/%Y à %H:%M')}.\n\n"
 
-        return Response(data)
+                f"Merci pour votre confiance !\n"
+
+                f"L'équipe Bila-Sol"
+            )
+
+            send_mail(
+              subject="Paiement de votre abonnement",
+                message=message,
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[client.email],
+                fail_silently=False
+            )
+
+
+
+        return Response({
+            'data':data,
+            'status':200
+        })
     
 class MaishaPayCallback(APIView):
 
