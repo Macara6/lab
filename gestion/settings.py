@@ -34,7 +34,7 @@ SECRET_KEY = 'django-insecure-cr+nt5y*e83_0+6&xopwjgvc9pi2ul&dys(q74o9uu=syp5q8h
 # SECURITY WARNING: don't run with debug turned on in production!
 
 
-DEBUG = False   #mode  developpemnt
+DEBUG = False  #mode  developpemnt
 
 ALLOWED_HOSTS = ['*']
 
@@ -199,8 +199,8 @@ sentry_sdk.init(
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 #  data base in django
 
-'''
 
+'''
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',

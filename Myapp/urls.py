@@ -51,6 +51,7 @@ urlpatterns = [
     path("users/delete-permanent/<int:id>/", PermanentDeleteUserView.as_view(), name="delete-user-permanent"),
     path("users/trashed/", TrashedUsersListView.as_view(), name="trashed-users"),
     path('user/update/', UpdateUserApiView.as_view(), name='update-user'),
+    path('users/views/',UserCretedIdView.as_view()),
 
     # route pour le gestion du client 
     path("customer/created/",CreateCustomer.as_view(), name="create_customer"),

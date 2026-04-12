@@ -405,7 +405,28 @@ class UserCreatedByView(generics.ListAPIView):
         direct_children = User.objects.filter(created_by=user_id, is_deleted=False)
 
         return list(direct_children) 
+    
+#API pour recuper les utilisateur 
+class UserCretedIdView(generics.ListAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        user_id = self.request.query_params.get('user_id')
+
+        if not user_id:
+            return User.objects.none()
+
+        try:
+            user_id = int(user_id)
+        except ValueError:
+            return User.objects.none()
+
+        return User.objects.filter(created_by=user_id, is_deleted=False)
+
+
+    
+       
 class UserTreeView(APIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
@@ -548,6 +569,7 @@ class DeleteCustomer(RetrieveDestroyAPIView):
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated]
     lookup_field ='id'
+
 # afficher les clients 
 class CustomerView(generics.ListAPIView):
     serializer_class = CustomerSerializer
