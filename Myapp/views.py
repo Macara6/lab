@@ -109,7 +109,9 @@ class LoginView(APIView):
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
-
+        remember_me = request.data.get('remember_me',False)
+       
+        
         # Authentification
         user = authenticate(request, username=username, password=password)
         if not user or user.is_deleted:
@@ -117,7 +119,18 @@ class LoginView(APIView):
                 {'error': 'Compte non trouvé ou identifiants invalides'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-
+      
+        if remember_me:
+            token = RefreshToken.for_user(user)
+            access_token = token.access_token
+            access_token.set_exp(lifetime = timedelta(days=30))
+            
+        else:
+            token = RefreshToken.for_user(user)
+            access_token = token.access_token
+            access_token.set_exp(lifetime=timedelta(hours=24))
+            
+       
         # 2️ Superuser → accès direct
         if user.is_superuser:
             token = RefreshToken.for_user(user)
@@ -125,7 +138,7 @@ class LoginView(APIView):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
-                'token': str(token.access_token),
+                'token': str(access_token),
                 'is_superuser': True,
                 'status': user.status
             }, status=status.HTTP_200_OK)
@@ -138,16 +151,13 @@ class LoginView(APIView):
                 {'error': "Aucun abonnement actif trouvé dans la hiérarchie."},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-
-        # 4 Générer le token JWT
-        token = RefreshToken.for_user(user)
-
+        
         # 5Retourner les infos de l’utilisateur
         return Response({
             'id': user.id,
             'username': user.username,
             'email': user.email,
-            'token': str(token.access_token),
+            'token': str(access_token),
             'is_superuser': user.is_superuser,
             'status': user.status,
             'parent_id': top_parent.id,
@@ -170,7 +180,21 @@ class LoginView(APIView):
                 pass
             parent = parent.created_by
         return None, None
-
+    
+#API pour la deconnexion 
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        try:
+            refresh_token = request.data.get("refresh")
+            if not refresh_token:
+                return Response({"error":"Refresh Token  requis"}, status=400)
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({"message":"Déconnexion réussie"}, status=200)
+        except Exception:
+            return Response({"error":"Token invalide"})
+    
 #API pour register
 
 class RegisterAccountView(generics.CreateAPIView):

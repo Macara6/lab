@@ -40,19 +40,19 @@ ALLOWED_HOSTS = ['*']
 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=30),  # Set to 30 days or any duration you prefer
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=3),  # Set to 30 days or any duration you prefer
+    'REFRESH_TOKEN_LIFETIME': timedelta(minutes=3),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
 #key maishapay
 
-MAISHAPAY_PUBLIC_KEY = "MP-SBPK-x0Gd7VV$LoktirHV$1Us1LWJnA6X/bDJ4doAby1RCILXolP$yDJ0DabYuR6qP$0DOL2mUX2ioQnH.oXpHN$XFat$/fkQPJ24FYhrGu1JE2mku.u02xfHEuVZ"
-MAISHAPAY_SECRET_KEY ="MP-SBPK-K23VdFI2f$soBERZE$Df4cpMyb0cnM0$$la1aO7aXk0We6I91AHfF6JayYcgAexrfQTf$rpUF84O.vBV$qeBzPv2vghTZiyy4MgPD8JBb7/20xC7m31qR4nu"
+#MAISHAPAY_PUBLIC_KEY = "MP-SBPK-x0Gd7VV$LoktirHV$1Us1LWJnA6X/bDJ4doAby1RCILXolP$yDJ0DabYuR6qP$0DOL2mUX2ioQnH.oXpHN$XFat$/fkQPJ24FYhrGu1JE2mku.u02xfHEuVZ"
+#MAISHAPAY_SECRET_KEY ="MP-SBPK-K23VdFI2f$soBERZE$Df4cpMyb0cnM0$$la1aO7aXk0We6I91AHfF6JayYcgAexrfQTf$rpUF84O.vBV$qeBzPv2vghTZiyy4MgPD8JBb7/20xC7m31qR4nu"
 
-#MAISHAPAY_PUBLIC_KEY ="MP-LIVEPK-Pn2EbCwCMCe7XoF1tEe4Un1tZsLH.OIXEN58mCQF00.1tD$Z1N9YRew2oyBHOHooI3ujk1$m0iF5njg$.g6bnnnX.u5RnwnzK6SMx$q$S2K60B$eL3SN0syy"
-#MAISHAPAY_SECRET_KEY ="MP-LIVEPK-JgSifRXoaSQ$JBy.HgtTXS0P02LU2trh164U7z2ahMhIPiuA19XW$HPsZpVYSNyF2Fb4JDzxnFxnuyvjdxcDu$$VuryIeu$kPBFeJLX20C$hvqlWGed0/gao"
+MAISHAPAY_PUBLIC_KEY ="MP-LIVEPK-Pn2EbCwCMCe7XoF1tEe4Un1tZsLH.OIXEN58mCQF00.1tD$Z1N9YRew2oyBHOHooI3ujk1$m0iF5njg$.g6bnnnX.u5RnwnzK6SMx$q$S2K60B$eL3SN0syy"
+MAISHAPAY_SECRET_KEY ="MP-LIVEPK-JgSifRXoaSQ$JBy.HgtTXS0P02LU2trh164U7z2ahMhIPiuA19XW$HPsZpVYSNyF2Fb4JDzxnFxnuyvjdxcDu$$VuryIeu$kPBFeJLX20C$hvqlWGed0/gao"
 
 
 
@@ -62,8 +62,8 @@ AFRICASTALKING_API_KEY = "OroX4OpjX"
 
 
 #reglage  gamil pour envoiyer le email
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-#EMAIL_BACKEND = 'Myapp.email_backend.UnsafeEmailBackend'
+#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'Myapp.email_backend.UnsafeEmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'Myapp',
+    'rest_framework_simplejwt.token_blacklist',
     'rest_framework',
     'corsheaders',
   
@@ -199,8 +200,8 @@ sentry_sdk.init(
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 #  data base in django
 
-
 '''
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',

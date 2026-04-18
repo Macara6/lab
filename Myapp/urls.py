@@ -8,6 +8,7 @@ urlpatterns = [
     # route pour la mise à jour de l'application 
     path('app/update/', CheckAppUpdateView.as_view(), name="app_update"),
     path('login/',LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     #route pour le produit pour le stock
     path('products/',(ProductListView.as_view())),
     path('productCreate/',ProductCreateView.as_view(), name='product-create'),
