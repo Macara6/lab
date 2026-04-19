@@ -587,6 +587,20 @@ class CreateCustomer(generics.CreateAPIView):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.status =='ADMIN':
+            serializer.save(created_by=user)
+        elif user.status=='CAISSIER':
+            creator_user = getattr(user, 'created_by', None)
+            if creator_user:
+                serializer.save(created_by=creator_user)
+            else:
+                serializer.save(creted_by = user)
+        else:
+            serializer.save(created_by=user)
+            
 #supprimer le client
 class DeleteCustomer(RetrieveDestroyAPIView):
     queryset = Customer.objects.all()

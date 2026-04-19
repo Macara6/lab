@@ -51,7 +51,7 @@ class Customer(models.Model):
     name = models.CharField(max_length=20)
     last_name = models.CharField(max_length=20)
     sexe = models.CharField(max_length=9, choices=SEXE_TYPE, blank=True, null=True)
-    phone_number = models.CharField(max_length=20,unique=True)
+    phone_number = models.CharField(max_length=20,unique=False)
     email = models.EmailField(max_length=40, blank=True, null=True)
     balance_point = models.DecimalField(max_digits=12,decimal_places=2, default=Decimal("0.00"))
     created_at  = models.DateTimeField(auto_now_add=True)
