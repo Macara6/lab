@@ -1,5 +1,6 @@
 
 
+import re
 from django.db.models import Q
 import random
 from django.shortcuts import get_object_or_404
@@ -23,6 +24,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.generics import UpdateAPIView
+from rest_framework.pagination import PageNumberPagination
 
 from .pdf_utils import build_loyalty_card_pdf
 from rest_framework.decorators import api_view, permission_classes
@@ -114,6 +116,13 @@ class LoginView(APIView):
         
         # Authentification
         user = authenticate(request, username=username, password=password)
+        user.ip_address = get_client_ip(request)
+        user.device_info = get_device_info(request)
+        user.is_online = True
+        user.last_activity = timezone.now()
+        user.save()
+        print('utilisateur : ', user.username)
+        print('device info      :', user.device_info)
         if not user or user.is_deleted:
             return Response(
                 {'error': 'Compte non trouvé ou identifiants invalides'},
@@ -123,12 +132,13 @@ class LoginView(APIView):
         if remember_me:
             token = RefreshToken.for_user(user)
             access_token = token.access_token
-            access_token.set_exp(lifetime = timedelta(days=30))
-            
+            access_token.set_exp(lifetime = timedelta(days=10))
+            print('token pour 30j')
         else:
             token = RefreshToken.for_user(user)
             access_token = token.access_token
             access_token.set_exp(lifetime=timedelta(hours=24))
+            print('token 3 min')
             
        
         # 2️ Superuser → accès direct
@@ -181,20 +191,74 @@ class LoginView(APIView):
             parent = parent.created_by
         return None, None
     
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+    
+def get_device_info(request):
+    user_agent = request.META.get('HTTP_USER_AGENT', '')
+
+    match = re.search(r'\((.*?)\)', user_agent)
+    if match:
+        device = match.group(1)
+
+        # Nettoyage (optionnel)
+        device = device.replace("Macintosh; ", "")
+        device = device.replace("Windows NT", "Windows")
+
+        return device
+    
 #API pour la deconnexion 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
+        request.user.is_online = False
+        request.user.save(update_fields = ['is_online'])
+
+        print('utilisateur :', request.user.username)
+        print('online :', request.user.is_online)
+
         try:
             refresh_token = request.data.get("refresh")
             if not refresh_token:
                 return Response({"error":"Refresh Token  requis"}, status=400)
             token = RefreshToken(refresh_token)
             token.blacklist()
+   
+
             return Response({"message":"Déconnexion réussie"}, status=200)
         except Exception:
             return Response({"error":"Token invalide"})
+
     
+#API fetch user is online
+class OnlineUsersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self,request):
+        threshold = timezone.now() - timedelta(minutes=5)
+        users = User.objects.filter(
+            is_deleted = False,
+            is_online = True
+        )
+        data = [
+            {
+                "id":u.id,
+                "username":u.username,
+                "status":u.status,
+                "is_online":u.is_online,
+                "last_activity":u.last_activity,
+                "ip_address":u.ip_address,
+                "device_info":u.device_info
+            }
+            for u in users
+            
+        ]
+        return Response(data)
 #API pour register
 
 class RegisterAccountView(generics.CreateAPIView):
@@ -582,7 +646,6 @@ class PermanentDeleteUserView(APIView):
 
 
 #object pour crée un nouveau client
-
 class CreateCustomer(generics.CreateAPIView):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
@@ -600,7 +663,7 @@ class CreateCustomer(generics.CreateAPIView):
                 serializer.save(creted_by = user)
         else:
             serializer.save(created_by=user)
-            
+
 #supprimer le client
 class DeleteCustomer(RetrieveDestroyAPIView):
     queryset = Customer.objects.all()

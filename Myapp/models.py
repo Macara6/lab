@@ -39,6 +39,13 @@ class CustomUser(AbstractUser):
     permanent_delete_at = models.DateTimeField(null=True, blank=True)
     custom_account_id = models.CharField(max_length=50,unique=True, null=tuple, blank=True)
 
+    is_online = models.BooleanField(default=False)
+    last_activity = models.DateTimeField(null=True, blank=True)
+    
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    device_info = models.TextField(null=True, blank=True)
+
+
     def __str__(self):
         return f"{self.username} ({self.status}) {self.custom_account_id}"
 

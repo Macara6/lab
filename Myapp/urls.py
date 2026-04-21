@@ -29,7 +29,8 @@ urlpatterns = [
     path('invoices/history/',UserSalesHistoryView.as_view(), name='user-sales-history'),
     path('invoice/detail/', InvoiceDetailView.as_view(), name='invoice_detail'),
     path('invoice/cancel/<int:invoice_id>/', CancelInvoiceView.as_view(), name='cancel_invoice'),
-    path('usersView/', UserView.as_view(), name='user-list'),
+
+   
    
     #route pour la categorie
     path('category/',CategoryView.as_view(), name='category-list'),
@@ -53,6 +54,8 @@ urlpatterns = [
     path("users/trashed/", TrashedUsersListView.as_view(), name="trashed-users"),
     path('user/update/', UpdateUserApiView.as_view(), name='update-user'),
     path('users/views/',UserCretedIdView.as_view()),
+    path('usersView/', UserView.as_view(), name='user-list'),
+    path('online/users/',OnlineUsersView.as_view()),
 
     # route pour le gestion du client 
     path("customer/created/",CreateCustomer.as_view(), name="create_customer"),
