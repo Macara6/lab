@@ -32,6 +32,8 @@ class CustomUser(AbstractUser):
     )
 
     is_deleted = models.BooleanField(default=False)
+    
+    is_blocked = models.BooleanField(default=False)
 
     is_register = models.BooleanField(default=False)
     

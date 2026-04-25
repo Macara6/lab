@@ -15,11 +15,11 @@ class SalesCursorPagination(CursorPagination):
     
 
 class UserSerializer(serializers.ModelSerializer):
-   
+    user_created_name=serializers.CharField(source='created_by.username', read_only=True)
     class Meta:
         model = User
         fields = ['id','username','first_name','last_name','email','password','date_joined','is_superuser','status','deleted_at','permanent_delete_at','is_deleted',
-                  'custom_account_id']
+                  'custom_account_id','is_blocked','user_created_name']
         extra_kwargs = {
             'password':{'write_only':True},
             'date_joined': {'read_only': True}

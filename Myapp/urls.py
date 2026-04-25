@@ -56,6 +56,8 @@ urlpatterns = [
     path('users/views/',UserCretedIdView.as_view()),
     path('usersView/', UserView.as_view(), name='user-list'),
     path('online/users/',OnlineUsersView.as_view()),
+    path('user/blocked/<int:id>/', BlockedUser.as_view()),
+    path('user/unblocked/<int:id>/', UnblockedUser.as_view()),
 
     # route pour le gestion du client 
     path("customer/created/",CreateCustomer.as_view(), name="create_customer"),
@@ -88,6 +90,7 @@ urlpatterns = [
     path('userProfil/', UserProfilView.as_view(), name='user_profil'),
     path('userProfil/update/', UserProfilUpdateView.as_view(), name='user_profil_update'),
     path('userProfil/create/',CreateProfilView.as_view(), name='create-profile'),
+
     path('userProfil/toggle/<int:pk>/',TogglePoints.as_view()),
 
     #route pour la careation, vision et suppression du bon de sortie

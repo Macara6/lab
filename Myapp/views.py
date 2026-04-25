@@ -123,11 +123,19 @@ class LoginView(APIView):
         user.save()
         print('utilisateur : ', user.username)
         print('device info      :', user.device_info)
+
         if not user or user.is_deleted:
             return Response(
                 {'error': 'Compte non trouvé ou identifiants invalides'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+        
+        if not user or user.is_blocked:
+            return Response(
+                {'error': 'Ce compte est  bloqué pour les raisons des sécurité'},
+                status=status.HTTP_406_NOT_ACCEPTABLE
+            )
+        
       
         if remember_me:
             token = RefreshToken.for_user(user)
@@ -475,7 +483,7 @@ class UsersCreatedByMeView(generics.ListAPIView):
               Q(created_by = user) | Q(is_register = True),
               is_deleted = False
             )
-        return User.objects.filter(created_by=self.request.user, is_deleted = False)
+        return User.objects.filter(created_by=self.request.user, is_deleted = False, is_blocked= False)
     
 class UserCreatedByView(generics.ListAPIView):
     serializer_class = UserSerializer
@@ -502,15 +510,26 @@ class UserCretedIdView(generics.ListAPIView):
     def get_queryset(self):
         user_id = self.request.query_params.get('user_id')
 
+
         if not user_id:
             return User.objects.none()
-
         try:
             user_id = int(user_id)
         except ValueError:
             return User.objects.none()
+        users = User.objects.filter(created_by = user_id, is_deleted = False)
+        descendants = get_all_descendants(users.values_list('id', flat=True))
+   
+        return users | descendants
+    
+def get_all_descendants(user_ids):
+    children = User.objects.filter(created_by__in = user_ids, is_deleted= False)
+    if not children.exists():
+        return children
+    
+    return children | get_all_descendants(children.values_list('id', flat=True))
 
-        return User.objects.filter(created_by=user_id, is_deleted=False)
+
 
 
     
@@ -630,7 +649,51 @@ class RestoreUserView(APIView):
         user.save()
 
         return Response({"message":"utilisateur restaurée avec succès"})
+    
+# API pour bliqué l'utilisateur avec toute sa descendence
+class BlockedUser(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, id):
+        try:
+            user = User.objects.get(id=id, is_deleted = False)
+            users  = User.objects.filter(created_by= user.id, is_deleted = False)
+            descendants = get_all_descendants(users.values_list('id', flat=True))
+        except User.DoesNotExist:
+            return Response({"error":"Utilisateur introuvable"}, status=404)
+    
+        user.is_blocked = True
+        user.save()
+        for user in users:
+            user.is_blocked = True
+            user.save()
+        for dsc in descendants:
+            dsc.is_blocked = True
+            dsc.save()
 
+        return Response({"message":"utilisateur bloqué avec succès"}, status=status.HTTP_200_OK)
+# APi pour debloqué l'utilisateur avec sa déscendence
+class UnblockedUser(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        try:
+            user = User.objects.get(id=id, is_deleted = False)
+            users = User.objects.filter(created_by =user.id, is_deleted = False)
+            descendants = get_all_descendants(users.values_list('id', flat=True))
+
+        except User.DoesNotExist:
+            return Response({"error":"Utiisateur introuvable"}, status=404)
+        user.is_blocked = False
+        user.save()
+        for user in users:
+            user.is_blocked = False
+            user.save()
+        for dsc in descendants:
+            dsc.is_blocked = False
+            dsc.save()
+        return Response({"message":"utilisateur de bloqué"})
+            
 #supprimer directe
 class PermanentDeleteUserView(APIView):
     permission_classes = [IsAuthenticated]
