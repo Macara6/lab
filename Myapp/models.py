@@ -32,7 +32,7 @@ class CustomUser(AbstractUser):
     )
 
     is_deleted = models.BooleanField(default=False)
-    
+
     is_blocked = models.BooleanField(default=False)
 
     is_register = models.BooleanField(default=False)
@@ -50,6 +50,15 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.status}) {self.custom_account_id}"
+    
+# historique de connexion 
+class ConnectionHistory(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    connection_time = models.DateTimeField(null=True, blank=True)
+    disconnection_time = models.DateTimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    device_info = models.TextField(null=True, blank=True)  
+    created_at = models.DateTimeField(null=True, blank=True)
 
 #classe client 
 class Customer(models.Model):

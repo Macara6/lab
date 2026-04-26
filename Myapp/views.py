@@ -116,13 +116,7 @@ class LoginView(APIView):
         
         # Authentification
         user = authenticate(request, username=username, password=password)
-        user.ip_address = get_client_ip(request)
-        user.device_info = get_device_info(request)
-        user.is_online = True
-        user.last_activity = timezone.now()
-        user.save()
-        print('utilisateur : ', user.username)
-        print('device info      :', user.device_info)
+        
 
         if not user or user.is_deleted:
             return Response(
@@ -148,7 +142,18 @@ class LoginView(APIView):
             access_token.set_exp(lifetime=timedelta(hours=24))
             print('token 3 min')
             
-       
+        user.ip_address = get_client_ip(request)
+        user.device_info = get_device_info(request)
+        user.is_online = True
+        user.last_activity = timezone.now()
+        user.save()
+        
+        connection_history = ConnectionHistory.objects.create(
+            user = user,
+            connection_time=timezone.now(),
+            ip_address = user.ip_address,
+            device_info= user.device_info
+        )
         # 2️ Superuser → accès direct
         if user.is_superuser:
             token = RefreshToken.for_user(user)
@@ -227,6 +232,15 @@ class LogoutView(APIView):
         request.user.is_online = False
         request.user.save(update_fields = ['is_online'])
 
+        connection_history = ConnectionHistory.objects.filter(
+            user=request.user,
+            disconnection_time__isnull=True
+            ).last()
+        
+        if connection_history:
+            connection_history.disconnection_time = timezone.now()
+            connection_history.save()
+
         print('utilisateur :', request.user.username)
         print('online :', request.user.is_online)
 
@@ -267,6 +281,10 @@ class OnlineUsersView(APIView):
             
         ]
         return Response(data)
+
+
+   
+
 #API pour register
 
 class RegisterAccountView(generics.CreateAPIView):
@@ -334,7 +352,7 @@ class RegisterAccountView(generics.CreateAPIView):
             )
         
         start_date = timezone.now()
-        end_date = start_date + timedelta(days=10)
+        end_date = start_date + timedelta(days=30)
 
         subscription = Subscription.objects.create(
                 user= user,
@@ -432,6 +450,12 @@ class UserCreateView(generics.CreateAPIView):
         #creation de l'utilisateur 
     def _create_user(self, request, creator):
 
+        email = request.data.get('email')
+        if User.objects.filter(email=email).exists():
+            return Response({
+                "error":" un utilisateur avec cet email existe déjà "
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()

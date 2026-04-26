@@ -41,6 +41,21 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
+class ConnectionHistorySerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.username', read_only= True)
+    class Meta:
+        model = ConnectionHistory
+        fiels = [
+            'id',
+            'user',
+            'user_name',
+            'connection_time',
+            'disconnection_time',
+            'ip_address',
+            'device_info',
+            'created_at' 
+        ]
+    
 class CustomerSerializer(serializers.ModelSerializer):
     total_value_points =  serializers.SerializerMethodField()
     class Meta:

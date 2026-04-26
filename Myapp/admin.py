@@ -7,6 +7,7 @@ from .models import *
 
 admin.site.register(CustomUser)
 admin.site.register(Customer)
+admin.site.register(ConnectionHistory)
 admin.site.register(Category)
 admin.site.register(Product)
 admin.site.register(StockHistory)
