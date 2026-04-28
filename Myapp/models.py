@@ -56,9 +56,9 @@ class ConnectionHistory(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     connection_time = models.DateTimeField(null=True, blank=True)
     disconnection_time = models.DateTimeField(null=True, blank=True)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    ip_address = models.CharField(max_length=10,null=True, blank=True)
     device_info = models.TextField(null=True, blank=True)  
-    created_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True,null=True, blank=True)
 
 #classe client 
 class Customer(models.Model):

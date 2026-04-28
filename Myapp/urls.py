@@ -55,7 +55,10 @@ urlpatterns = [
     path('user/update/', UpdateUserApiView.as_view(), name='update-user'),
     path('users/views/',UserCretedIdView.as_view()),
     path('usersView/', UserView.as_view(), name='user-list'),
+   # utilisateur connecter + historique de connnection 
     path('online/users/',OnlineUsersView.as_view()),
+    path('online/history/', ConnectionHistoryView.as_view()),
+
     path('user/blocked/<int:id>/', BlockedUser.as_view()),
     path('user/unblocked/<int:id>/', UnblockedUser.as_view()),
 

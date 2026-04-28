@@ -43,12 +43,14 @@ class UserSerializer(serializers.ModelSerializer):
     
 class ConnectionHistorySerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.username', read_only= True)
+    user_role = serializers.CharField(source = 'user.status', read_only = True)
     class Meta:
         model = ConnectionHistory
-        fiels = [
+        fields = [
             'id',
             'user',
             'user_name',
+            'user_role',
             'connection_time',
             'disconnection_time',
             'ip_address',

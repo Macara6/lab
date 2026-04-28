@@ -282,9 +282,13 @@ class OnlineUsersView(APIView):
         ]
         return Response(data)
 
+#afficher l'historique de connexion
+class ConnectionHistoryView(generics.ListAPIView):
+    queryset = ConnectionHistory.objects.all().order_by('-connection_time')
+    serializer_class = ConnectionHistorySerializer
+    permission_classes = [IsAuthenticated]
 
    
-
 #API pour register
 
 class RegisterAccountView(generics.CreateAPIView):
@@ -554,9 +558,6 @@ def get_all_descendants(user_ids):
     return children | get_all_descendants(children.values_list('id', flat=True))
 
 
-
-
-    
        
 class UserTreeView(APIView):
     serializer_class = UserSerializer

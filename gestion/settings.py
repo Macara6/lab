@@ -117,7 +117,7 @@ CORS_ALLOWED_ORIGINS = [
        ]
 
 
-CORS_ALLOW_ALL_ORIGINS = True  #mode production 
+CORS_ALLOW_ALL_ORIGINS = False  #mode production 
 
 
 
@@ -227,6 +227,7 @@ DATABASES = {
         },
     }
 }
+
 
 
 
