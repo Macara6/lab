@@ -131,7 +131,14 @@ class UserProfile(models.Model):
 
     exchange_rate = models.DecimalField(max_digits=10,decimal_places=2, default=2300)
 
+class Comment(models.Model):
+     email = models.CharField(max_length=30)
+     message= models.CharField(max_length=500)
+     created_by = models.DateTimeField(auto_now_add=True)
 
+     def __str__(self):
+         return f"{self.email} {self.message}"
+    
 class SecretAccessKey(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
     hashed_key = models.CharField(max_length=255)
@@ -147,11 +154,9 @@ class SecretAccessKey(models.Model):
     def __str__(self):
         return f"Secret key for {self.user.username}"
     
-
 class Category(models.Model):
     name = models.CharField(max_length=50)
     user_created = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-
     def __str__(self):
         return self.name
 
@@ -204,7 +209,8 @@ class Product(models.Model):
             motif=motif
         )
 
-    
+
+
 # model pour l'historique du stock
 class StockHistory(models.Model):
     SORTIE = 'SORTIE'
@@ -214,7 +220,6 @@ class StockHistory(models.Model):
         (SORTIE,'Sortie'),
         (ENTRER,'Entrer'),
     ]
-
 
     product = models.ForeignKey(Product, related_name='stock_history', on_delete=models.CASCADE)
     quantity_added = models.PositiveBigIntegerField()

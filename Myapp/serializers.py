@@ -13,7 +13,15 @@ class SalesCursorPagination(CursorPagination):
     page_size = 20
     ordering = '-created_at'
     
-
+class CommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields =[
+            'id',
+            'email',
+            'message',
+            'created_by'
+        ]
 class UserSerializer(serializers.ModelSerializer):
     user_created_name=serializers.CharField(source='created_by.username', read_only=True)
     class Meta:

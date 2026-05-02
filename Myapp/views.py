@@ -241,8 +241,7 @@ class LogoutView(APIView):
             connection_history.disconnection_time = timezone.now()
             connection_history.save()
 
-        print('utilisateur :', request.user.username)
-        print('online :', request.user.is_online)
+       
 
         try:
             refresh_token = request.data.get("refresh")
@@ -288,9 +287,32 @@ class ConnectionHistoryView(generics.ListAPIView):
     serializer_class = ConnectionHistorySerializer
     permission_classes = [IsAuthenticated]
 
-   
-#API pour register
+#API pour envoivoie le commentaire
+class SendCommentView(generics.CreateAPIView):
+      serializer_class = CommentSerializer
 
+      def post(self, request, *args, **kwargs):
+          data = request.data
+          user_id = data.get('user_id')
+          message = data.get('message')
+          email = data.get('email')
+
+          if user_id:
+            try:
+                user = User.objects.get(id=user_id)
+                email = user.email
+            except Exception:
+               return Response({"error":"Utilisateur introuvable"})
+            
+          comment = Comment.objects.create(
+              email = email,
+              message= message
+          )
+          return Response({
+              "message":"commentaire enregister"
+          }, status=status.HTTP_200_OK)
+      
+#API pour register
 class RegisterAccountView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
@@ -1455,7 +1477,7 @@ class ReactivateSubscriptionView(APIView):
                         f"Bonjour {user.username},\n\n"
                         f"Votre abonnement a été réactivé jusqu'au {subscription.end_date.strftime('%d/%m/%Y')}.\n"
                         f"Type d'abonnement {subscription.subscription_type} de {subscription.amount} $/mois.\n"
-                        f"conctatez nous sur bilatech@bilatech.org si il y'a un problème\n"
+                        f"conctatez nous sur support@bilatech.org si il y'a un problème\n"
                         
                         f"Merci pour votre fidélité."
                     )
@@ -1556,7 +1578,7 @@ class PasswordResetConfirmView(APIView):
 
 
 class ListSubscriptionView(generics.ListAPIView):
-        queryset = Subscription.objects.all()
+        queryset = Subscription.objects.all().order_by('-start_date')
         serializer_class = SubscriptionSerialize
 
 

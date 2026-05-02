@@ -58,9 +58,12 @@ urlpatterns = [
    # utilisateur connecter + historique de connnection 
     path('online/users/',OnlineUsersView.as_view()),
     path('online/history/', ConnectionHistoryView.as_view()),
-
+  # fin des routes 
     path('user/blocked/<int:id>/', BlockedUser.as_view()),
     path('user/unblocked/<int:id>/', UnblockedUser.as_view()),
+
+  #route pour les commmentaires 
+    path('send-comment/',SendCommentView.as_view()), 
 
     # route pour le gestion du client 
     path("customer/created/",CreateCustomer.as_view(), name="create_customer"),
@@ -93,7 +96,6 @@ urlpatterns = [
     path('userProfil/', UserProfilView.as_view(), name='user_profil'),
     path('userProfil/update/', UserProfilUpdateView.as_view(), name='user_profil_update'),
     path('userProfil/create/',CreateProfilView.as_view(), name='create-profile'),
-
     path('userProfil/toggle/<int:pk>/',TogglePoints.as_view()),
 
     #route pour la careation, vision et suppression du bon de sortie
